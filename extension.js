@@ -1,13 +1,5 @@
-// ==UserScript==
-// @name         ChatGPT Markdown Exporter (with LaTeX & Callouts)
-// @namespace    chatgpt-markdown-exporter
-// @version      1.4
-// @description  Export ChatGPT conversations as clean Markdown with LaTeX and Obsidian callouts
-// @match        https://chatgpt.com/*
-// @require      https://unpkg.com/turndown/dist/turndown.js
-// @require      https://unpkg.com/turndown-plugin-gfm/dist/turndown-plugin-gfm.js
-// @grant        none
-// ==/UserScript==
+// YaChExp: Yet another ChatGPT Exporter 
+// Export ChatGPT conversations as clean Markdown with LaTeX and Obsidian callouts
 
 (() => {
   'use strict';

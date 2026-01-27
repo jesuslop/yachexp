@@ -1,0 +1,16 @@
+Loading the temporary extension
+
+Open Firefox and navigate to about:debugging.
+In the left-hand menu, click This Firefox.
+Click the Load Temporary Add-on... button.
+In the file dialog, navigate to your project directory and select the manifest.json file.
+Your extension is now installed temporarily. It will remain installed until you close Firefox.
+
+Development Workflow
+
+To see changes you make to your code:
+
+Edit your files (userscript.js, manifest.json, etc.) and save them.
+Go back to about:debugging.
+Click the Reload button next to your extension's name.
+This will load the new version of your files, allowing you to quickly test your changes. The extension should now be loaded and active on https://chatgpt.com/.
