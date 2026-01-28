@@ -14,3 +14,7 @@ Edit your files (userscript.js, manifest.json, etc.) and save them.
 Go back to about:debugging.
 Click the Reload button next to your extension's name.
 This will load the new version of your files, allowing you to quickly test your changes. The extension should now be loaded and active on https://chatgpt.com/.
+
+
+
+current repo code is for a firefox exension for exporting chatgpt conversations to markdown. Add to it a settings page to open with pinned extension button, with two options for two multiline texts: "Page template" and "Question template". Provide a way to reset each to a hardcoded default value.

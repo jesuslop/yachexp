@@ -104,7 +104,7 @@
       linkStyle: 'inlined'
     });
 
-	  turndownService.use([tables])
+    turndownService.use([tables])
 
     // Disable escaping markdown characters in html source
     turndownService.escape = function (string) {
@@ -380,47 +380,54 @@
    ********************************************************************/
 
   function exportMarkdown(pairs) {
-    const exportDate = new Date();
-    const title = getConversationTitle();
-    const link = getConversationLink();
-    const safeTitle = sanitizeFilename(title);
+    browser.storage.local.get({
+      pageTemplate: "DEFAULT_PAGE_TEMPLATE_NOT_LOADED",
+      questionTemplate: "DEFAULT_QUESTION_TEMPLATE_NOT_LOADED"
+    }).then(items => {
+      console.log("Exporting with templates:", items);
 
-    let markdown = `# ${title}\n\n`;
-    markdown += `- **Link:** [${link}](${link})\n`;
-    markdown += `- **Date:** ${formatDate(exportDate)}\n\n`;
-    markdown += '---\n\n';
+      const exportDate = new Date();
+      const title = getConversationTitle();
+      const link = getConversationLink();
+      const safeTitle = sanitizeFilename(title);
 
-    pairs.forEach((pair, idx) => {
-      const questionHTML = cleanArticle(pair.questionArticle).outerHTML;
-      const answerHTML = cleanArticle(pair.answerArticle).outerHTML;
+      let markdown = `# ${title}\n\n`;
+      markdown += `- **Link:** [${link}](${link})\n`;
+      markdown += `- **Date:** ${formatDate(exportDate)}\n\n`;
+      markdown += '---\n\n';
 
-      // Add extra spacing before questions (except the first one)
-      if (idx > 0) {
-        markdown += '\n\n';
-      }
+      pairs.forEach((pair, idx) => {
+        const questionHTML = cleanArticle(pair.questionArticle).outerHTML;
+        const answerHTML = cleanArticle(pair.answerArticle).outerHTML;
 
-      // Preserve paragraphs in question html text by converting newlines into BRs
-      const questionMd = htmlToMarkdown(questionHTML.replace(/\n/g, '<br>'));
+        // Add extra spacing before questions (except the first one)
+        if (idx > 0) {
+          markdown += '\n\n';
+        }
 
-      // Render questions as Obsidian custom callouts of type "bubble" (needs adomition plugin)
-      const questionCalloutMd = `\n\n\`\`\`${QUESTION_CALLOUT}\n${questionMd}\n\`\`\``;
+        // Preserve paragraphs in question html text by converting newlines into BRs
+        const questionMd = htmlToMarkdown(questionHTML.replace(/\n/g, '<br>'));
 
-      const answerMd = htmlToMarkdown(answerHTML);
+        // Render questions as Obsidian custom callouts of type "bubble" (needs adomition plugin)
+        const questionCalloutMd = `\n\n\`\`\`${QUESTION_CALLOUT}\n${questionMd}\n\`\`\``;
+
+        const answerMd = htmlToMarkdown(answerHTML);
 
 
-      markdown += questionCalloutMd + '\n\n';
-      markdown += answerMd + '\n\n';
+        markdown += questionCalloutMd + '\n\n';
+        markdown += answerMd + '\n\n';
+      });
+
+      const blob = new Blob([markdown], { type: 'text/markdown;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${safeTitle}.md`;
+      a.click();
+
+      URL.revokeObjectURL(url);
     });
-
-    const blob = new Blob([markdown], { type: 'text/markdown;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${safeTitle}.md`;
-    a.click();
-
-    URL.revokeObjectURL(url);
   }
 
   /********************************************************************

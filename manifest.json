@@ -5,7 +5,9 @@
   "description": "Export ChatGPT conversations as clean Markdown with LaTeX and Obsidian callouts",
   "content_scripts": [
     {
-      "matches": ["https://chatgpt.com/*"],
+      "matches": [
+        "https://chatgpt.com/*"
+      ],
       "js": [
         "lib/turndown.js",
         "lib/turndown-plugin-gfm.js",
@@ -17,5 +19,14 @@
     "gecko": {
       "id": "chatgpt-markdown-exporter@chatgpt-markdown-exporter"
     }
-  }
+  },
+  "permissions": [
+    "storage"
+  ],
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "icons": {
+    "128": "icon.svg"
+  }  
 }

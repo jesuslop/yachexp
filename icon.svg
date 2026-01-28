@@ -1,0 +1,19 @@
+<svg width="128" height="128" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <g fill="#10a37f">
+    
+    <text x="28" y="38" font-family="Arial, sans-serif" font-weight="900" font-size="28" text-anchor="middle">AI</text>
+    
+    <rect x="5" y="46" width="46" height="8" rx="2" />
+    
+    <text x="28" y="82" font-family="Arial, sans-serif" font-weight="900" font-size="28" text-anchor="middle">MD</text>
+    
+    <path d="M72 15 
+             L72 60 
+             L58 60 
+             L80 90 
+             L102 60 
+             L88 60 
+             L88 15 
+             Z" />
+  </g>
+</svg>
