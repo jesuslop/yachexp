@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "ChatGPT Markdown Exporter (with LaTeX & Callouts)",
+  "name": "Yet another ChatGPT Exporter",
   "version": "1.4",
   "description": "Export ChatGPT conversations as clean Markdown with LaTeX and Obsidian callouts",
   "content_scripts": [
@@ -28,5 +28,5 @@
   },
   "icons": {
     "128": "icon.svg"
-  }  
+  }
 }

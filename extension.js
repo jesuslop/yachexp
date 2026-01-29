@@ -1,10 +1,8 @@
-// YaChExp: Yet another ChatGPT Exporter 
-// Export ChatGPT conversations as clean Markdown with LaTeX and Obsidian callouts
+// Yet another ChatGPT Exporter 
+// Export ChatGPT conversations as clean Markdown
 
 (() => {
   'use strict';
-
-  const QUESTION_CALLOUT = "ad-bubble";
 
   /********************************************************************
    * Utilities
@@ -30,6 +28,25 @@
       .slice(0, 120);
   }
 
+  function processFilename(template, title, date) {
+    if (!template) return sanitizeFilename(title);
+
+    const replacements = {
+      '{title}': sanitizeFilename(title),
+      '{date}': formatDate(date),
+      '{year}': date.getFullYear(),
+      '{month}': String(date.getMonth() + 1).padStart(2, '0'),
+      '{day}': String(date.getDate()).padStart(2, '0')
+    };
+
+    let filename = template;
+    for (const [key, val] of Object.entries(replacements)) {
+      filename = filename.replace(new RegExp(key, 'g'), val);
+    }
+    return sanitizeFilename(filename);
+  }
+
+
   function getConversationTitle() {
     const title = document.title
       ?.replace(/\s*\|\s*ChatGPT.*$/i, '')
@@ -43,7 +60,7 @@
 
 
   /********************************************************************
-   * HTML preprocessing for Markdown conversion
+   * (1/3) Preprocess HTML
    ********************************************************************/
 
   function preprocessHTML(html) {
@@ -83,9 +100,10 @@
     return doc.body.innerHTML;
   }
 
-  /********************************************************************
-   * HTML to Markdown conversion using Turndown
-   ********************************************************************/
+  /********************************************************************************
+   * (2/3) Markdown generation from question or answer HTML using Turndown converter
+   * https://github.com/mixmark-io/turndown
+   ********************************************************************************/
 
   function htmlToMarkdown(html) {
     // Preprocess HTML first
@@ -155,6 +173,67 @@
       .replace(/\n{3,}/g, '\n\n')
       .trim();
 
+  }
+
+  /***********************************************************************
+   * (3/3) Combine all questions/answer pairs into a final Markdown file
+   ***********************************************************************/
+
+  function exportMarkdown(pairs) {
+    browser.storage.local.get(null).then(items => {
+      // Profile Resolution Logic
+      let pageTemplate = "DEFAULT_PAGE_TEMPLATE_NOT_LOADED";
+      let questionTemplate = "DEFAULT_QUESTION_TEMPLATE_NOT_LOADED";
+      let filenameTemplate = ""; // Default to empty (uses title)
+
+      // Strict profile structure only
+      if (items.activeProfileId && items.profiles && items.profiles[items.activeProfileId]) {
+        const profile = items.profiles[items.activeProfileId];
+        pageTemplate = profile.pageTemplate;
+        questionTemplate = profile.questionTemplate;
+        filenameTemplate = profile.filenameTemplate;
+      } else {
+        console.log("no active profile found, using default templates");
+      }
+
+      const exportDate = new Date();
+      const title = getConversationTitle();
+      const link = getConversationLink();
+      const safeFilename = processFilename(filenameTemplate, title, exportDate);
+
+      // --- PAGE TEMPLATE PROCESSING ---
+      let markdown = pageTemplate
+        .replace(/{title}/g, title)
+        .replace(/{link}/g, link)
+        .replace(/{date}/g, formatDate(exportDate));
+
+      // --- CONVERSATION LOOP ---
+      pairs.forEach((pair, idx) => {
+        const questionHTML = cleanArticle(pair.questionArticle).outerHTML;
+        const answerHTML = cleanArticle(pair.answerArticle).outerHTML;
+
+        // Preserve paragraphs in question html text by converting newlines into BRs
+        const questionMd = htmlToMarkdown(questionHTML.replace(/\n/g, '<br>'));
+
+        // --- QUESTION TEMPLATE PROCESSING ---
+        const questionBlock = questionTemplate.replace(/{question}/g, questionMd);
+
+        const answerMd = htmlToMarkdown(answerHTML);
+
+        markdown += questionBlock + '\n\n';
+        markdown += answerMd + '\n\n';
+      });
+
+      const blob = new Blob([markdown], { type: 'text/markdown;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${safeFilename}.md`;
+      a.click();
+
+      URL.revokeObjectURL(url);
+    });
   }
 
   /********************************************************************
@@ -375,60 +454,7 @@
     };
   }
 
-  /********************************************************************
-   * Export logic
-   ********************************************************************/
 
-  function exportMarkdown(pairs) {
-    browser.storage.local.get({
-      pageTemplate: "DEFAULT_PAGE_TEMPLATE_NOT_LOADED",
-      questionTemplate: "DEFAULT_QUESTION_TEMPLATE_NOT_LOADED"
-    }).then(items => {
-      console.log("Exporting with templates:", items);
-
-      const exportDate = new Date();
-      const title = getConversationTitle();
-      const link = getConversationLink();
-      const safeTitle = sanitizeFilename(title);
-
-      let markdown = `# ${title}\n\n`;
-      markdown += `- **Link:** [${link}](${link})\n`;
-      markdown += `- **Date:** ${formatDate(exportDate)}\n\n`;
-      markdown += '---\n\n';
-
-      pairs.forEach((pair, idx) => {
-        const questionHTML = cleanArticle(pair.questionArticle).outerHTML;
-        const answerHTML = cleanArticle(pair.answerArticle).outerHTML;
-
-        // Add extra spacing before questions (except the first one)
-        if (idx > 0) {
-          markdown += '\n\n';
-        }
-
-        // Preserve paragraphs in question html text by converting newlines into BRs
-        const questionMd = htmlToMarkdown(questionHTML.replace(/\n/g, '<br>'));
-
-        // Render questions as Obsidian custom callouts of type "bubble" (needs adomition plugin)
-        const questionCalloutMd = `\n\n\`\`\`${QUESTION_CALLOUT}\n${questionMd}\n\`\`\``;
-
-        const answerMd = htmlToMarkdown(answerHTML);
-
-
-        markdown += questionCalloutMd + '\n\n';
-        markdown += answerMd + '\n\n';
-      });
-
-      const blob = new Blob([markdown], { type: 'text/markdown;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${safeTitle}.md`;
-      a.click();
-
-      URL.revokeObjectURL(url);
-    });
-  }
 
   /********************************************************************
    * Bootstrap

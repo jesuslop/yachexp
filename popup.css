@@ -101,3 +101,63 @@ textarea:focus {
 .status.show {
   opacity: 1;
 }
+
+/* --- New Styles --- */
+
+.hidden {
+  display: none !important;
+}
+
+.row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.profile-controls select {
+  flex: 1;
+  padding: 6px;
+  border-radius: 4px;
+  border: 1px solid #ddd;
+}
+
+.profile-controls button {
+  padding: 6px 10px;
+  border: 1px solid #ddd;
+  background: white;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.profile-controls button:hover {
+  background: #f0f0f0;
+}
+
+.profile-controls button.danger:hover {
+  background: #ffecec;
+  color: #d00;
+  border-color: #ffcccc;
+}
+
+input[type="text"] {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  box-sizing: border-box;
+  font-family: monospace;
+  font-size: 12px;
+}
+
+input[type="text"]:focus {
+  outline: none;
+  border-color: #10a37f;
+}
+
+h3 {
+  margin: 0 0 16px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #444;
+}

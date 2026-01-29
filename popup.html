@@ -1,36 +1,66 @@
 <!DOCTYPE html>
 <html>
+
 <head>
   <meta charset="utf-8">
   <link rel="stylesheet" href="popup.css">
 </head>
+
 <body>
   <div class="container">
-    <h2>Markdown Templates</h2>
-    
-    <div class="group">
-      <div class="header">
+
+    <!-- View 1: Profile Manager -->
+    <div id="view-manager">
+      <h2>Configuration Profiles</h2>
+
+      <div class="group profile-controls">
+        <label for="profileSelector">Active Profile</label>
+        <div class="row">
+          <select id="profileSelector"></select>
+          <button id="btnEdit" title="Edit Profile">✏️</button>
+          <button id="btnDelete" title="Delete Profile" class="danger">🗑️</button>
+        </div>
+        <button id="btnNew" class="text-btn">+ Create New Profile</button>
+      </div>
+
+      <div class="actions">
+        <!-- "Ok buttons are expected to perform functionality and then close modal dialogs" -->
+        <button id="managerOk" class="primary">OK</button>
+        <button id="managerCancel">Cancel</button>
+      </div>
+      <div id="status" class="status"></div>
+    </div>
+
+    <!-- View 2: Profile Editor -->
+    <div id="view-editor" class="hidden">
+      <h3 id="editorTitle">Editing conversion profile ...</h3>
+
+      <div class="group">
+        <label for="filenameTemplate">Filename Template</label>
+        <div class="help">Vars: {title}, {date}, {year}, {month}, {day}</div>
+        <input type="text" id="filenameTemplate" placeholder="{title}">
+      </div>
+
+      <div class="group">
         <label for="pageTemplate">Page Template</label>
-        <button id="resetPage" class="text-btn">Reset</button>
+        <div class="help">Vars: {title}, {link}, {date}</div>
+        <textarea id="pageTemplate" rows="6"></textarea>
       </div>
-      <div class="help">Variables: {title}, {link}, {date}</div>
-      <textarea id="pageTemplate" rows="6"></textarea>
-    </div>
 
-    <div class="group">
-      <div class="header">
+      <div class="group">
         <label for="questionTemplate">Question Template</label>
-        <button id="resetQuestion" class="text-btn">Reset</button>
+        <div class="help">Vars: {question}</div>
+        <textarea id="questionTemplate" rows="4"></textarea>
       </div>
-      <div class="help">Variables: {question}</div>
-      <textarea id="questionTemplate" rows="4"></textarea>
+
+      <div class="actions">
+        <button id="editorOk" class="primary">OK</button>
+        <button id="editorCancel">Cancel</button>
+      </div>
     </div>
 
-    <div class="actions">
-      <button id="save" class="primary">Save Settings</button>
-      <span id="status" class="status"></span>
-    </div>
   </div>
   <script src="popup.js"></script>
 </body>
+
 </html>

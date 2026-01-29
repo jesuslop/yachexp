@@ -18,3 +18,11 @@ This will load the new version of your files, allowing you to quickly test your 
 
 
 current repo code is for a firefox exension for exporting chatgpt conversations to markdown. Add to it a settings page to open with pinned extension button, with two options for two multiline texts: "Page template" and "Question template". Provide a way to reset each to a hardcoded default value.
+
+- - - 
+
+Nobre fichero MD configurable (prefijo, fecha)
+
+clean data:
+	this firefox
+		await browser.storage.local.clear()     // wipe only your extension
