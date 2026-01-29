@@ -367,12 +367,22 @@
     const controls = document.createElement('div');
     controls.style.marginBottom = '10px';
 
+    const btnStyle = `
+      cursor: pointer;
+      padding: 6px 12px;
+      background: #f0f0f0;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 13px;
+    `;
+
     const selectAllBtn = document.createElement('button');
     selectAllBtn.textContent = 'Select all';
-    selectAllBtn.style.marginRight = '10px';
+    selectAllBtn.style.cssText = btnStyle + 'margin-right: 10px;';
 
     const deselectAllBtn = document.createElement('button');
     deselectAllBtn.textContent = 'Deselect all';
+    deselectAllBtn.style.cssText = btnStyle;
 
     controls.append(selectAllBtn, deselectAllBtn);
 
