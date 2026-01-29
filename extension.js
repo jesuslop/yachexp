@@ -405,7 +405,9 @@
 
       const text = document.createElement('span');
       // Clone and remove sr-only elements before getting text
-      text.textContent = truncate(pair.questionArticle.innerText);
+      const cleanClone = pair.questionArticle.cloneNode(true);
+      cleanClone.querySelectorAll('.sr-only').forEach(el => el.remove());
+      text.textContent = truncate(cleanClone.innerText);
 
       row.append(cb, text);
       list.appendChild(row);
