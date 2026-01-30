@@ -25,3 +25,7 @@ browser.runtime.onInstalled.addListener(() => {
         });
     });
 });
+
+browser.action.onClicked.addListener(() => {
+    browser.runtime.openOptionsPage();
+});

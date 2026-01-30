@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>ChatGPT Exporter Settings</title>
+    <link rel="stylesheet" href="options.css">
+</head>
+
+<body>
+    <div class="layout">
+        <!-- Sidebar: Profile List -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>Profiles</h2>
+            </div>
+            <div class="sidebar-content">
+                <ul id="profileList" class="profile-list">
+                    <!-- Items injected by JS -->
+                </ul>
+            </div>
+            <div class="sidebar-actions">
+                <button id="btnNew" class="sidebar-btn">+ Create New</button>
+                <button id="btnDelete" class="sidebar-btn danger">Delete Selected</button>
+                <button id="btnSave" class="sidebar-btn primary">Save Settings</button>
+                <div id="status" class="status"></div>
+            </div>
+        </aside>
+
+        <!-- Main Content: Configuration Form -->
+        <main class="main-content">
+            <div class="content-header">
+                <h2 id="formTitle">Edit Profile</h2>
+            </div>
+
+            <div class="scroll-area">
+                <div class="grid-container">
+                    <div class="group area-name">
+                        <label for="profileName">Profile Name</label>
+                        <div class="help">Exporting profile name</div>
+                        <input type="text" id="profileName" placeholder="Profile Name">
+                    </div>
+
+                    <div class="group area-filename">
+                        <label for="filenameTemplate">Filename Template</label>
+                        <div class="help">Vars: {title}, {date}, {year}, {month}, {day}</div>
+                        <input type="text" id="filenameTemplate" placeholder="{title}">
+                    </div>
+
+                    <div class="group area-page">
+                        <label for="pageTemplate">Page Template</label>
+                        <div class="help">Vars: {title}, {link}, {date}</div>
+                        <textarea id="pageTemplate" rows="6"></textarea>
+                    </div>
+
+                    <div class="group area-question">
+                        <label for="questionTemplate">Question Template</label>
+                        <div class="help">Vars: {question}</div>
+                        <textarea id="questionTemplate" rows="4"></textarea>
+                    </div>
+
+                    <div class="group area-inline">
+                        <label for="inlineMathTemplate">Inline Math Template</label>
+                        <div class="help">Vars: {latex}.</div>
+                        <textarea id="inlineMathTemplate" rows="2"></textarea>
+                    </div>
+
+                    <div class="group area-display">
+                        <label for="displayMathTemplate">Displayed Math Template</label>
+                        <div class="help">Vars: {latex}.</div>
+                        <textarea id="displayMathTemplate" rows="4"></textarea>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script src="options.js"></script>
+</body>
+
+</html>

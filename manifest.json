@@ -28,8 +28,10 @@
       "background.js"
     ]
   },
-  "action": {
-    "default_popup": "popup.html"
+  "action": {},
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
   },
   "icons": {
     "128": "icon.svg"
