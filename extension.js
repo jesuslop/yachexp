@@ -63,7 +63,7 @@
    * (1/3) Preprocess HTML
    ********************************************************************/
 
-  function preprocessHTML(html) {
+  function preprocessHTML(html, inlineMathTemplate, displayMathTemplate) {
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, 'text/html');
 
@@ -85,9 +85,12 @@
       const latex = annotation.textContent;
       const display = math.getAttribute('display') === 'block' || latex.includes('\n');
 
-      const replacement = display
-        ? `<br>$$<br>${latex}<br>$$<br>`
-        : `$${latex}$`;
+      let replacement = '';
+      const template = display ? displayMathTemplate : inlineMathTemplate;
+
+      replacement = template
+        .replace(/\n/g, '<br>')
+        .replace('{latex}', latex);
 
       const range = document.createRange();
       const fragment = range.createContextualFragment(replacement);
@@ -105,9 +108,9 @@
    * https://github.com/mixmark-io/turndown
    ********************************************************************************/
 
-  function htmlToMarkdown(html) {
+  function htmlToMarkdown(html, inlineMathTemplate, displayMathTemplate) {
     // Preprocess HTML first
-    html = preprocessHTML(html);
+    html = preprocessHTML(html, inlineMathTemplate, displayMathTemplate);
 
     var tables = turndownPluginGfm.tables
 
@@ -117,6 +120,7 @@
       hr: '---',
       bulletListMarker: '-',
       codeBlockStyle: 'fenced',
+      fence: "```",
       emDelimiter: '*',
       strongDelimiter: '**',
       linkStyle: 'inlined'
@@ -185,6 +189,8 @@
       let pageTemplate = "DEFAULT_PAGE_TEMPLATE_NOT_LOADED";
       let questionTemplate = "DEFAULT_QUESTION_TEMPLATE_NOT_LOADED";
       let filenameTemplate = ""; // Default to empty (uses title)
+      let inlineMathTemplate = "unconfigured";
+      let displayMathTemplate = "unconfigured";
 
       // Strict profile structure only
       if (items.activeProfileId && items.profiles && items.profiles[items.activeProfileId]) {
@@ -192,6 +198,8 @@
         pageTemplate = profile.pageTemplate;
         questionTemplate = profile.questionTemplate;
         filenameTemplate = profile.filenameTemplate;
+        inlineMathTemplate = profile.inlineMathTemplate || "unconfigured";
+        displayMathTemplate = profile.displayMathTemplate || "unconfigured";
       } else {
         console.log("no active profile found, using default templates");
       }
@@ -213,12 +221,12 @@
         const answerHTML = cleanArticle(pair.answerArticle).outerHTML;
 
         // Preserve paragraphs in question html text by converting newlines into BRs
-        const questionMd = htmlToMarkdown(questionHTML.replace(/\n/g, '<br>'));
+        const questionMd = htmlToMarkdown(questionHTML.replace(/\n/g, '<br>'), inlineMathTemplate, displayMathTemplate);
 
         // --- QUESTION TEMPLATE PROCESSING ---
         const questionBlock = questionTemplate.replace(/{question}/g, questionMd);
 
-        const answerMd = htmlToMarkdown(answerHTML);
+        const answerMd = htmlToMarkdown(answerHTML, inlineMathTemplate, displayMathTemplate);
 
         markdown += questionBlock + '\n\n';
         markdown += answerMd + '\n\n';

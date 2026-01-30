@@ -1,8 +1,4 @@
-const DEFAULTS = {
-    pageTemplate: `# {title}\n\n- **Link:** [{link}]({link})\n- **Date:** {date}\n\n---\n\n`,
-    questionTemplate: `\n\n\`\`\`ad-bubble\n{question}\n\`\`\``,
-    filenameTemplate: `{title}`
-};
+// DEFAULTS removed as per user request (trust background script initialization)
 
 // UI Elements
 const viewManager = document.getElementById('view-manager');
@@ -15,6 +11,8 @@ const statusSpan = document.getElementById('status');
 const filenameInput = document.getElementById('filenameTemplate');
 const pageInput = document.getElementById('pageTemplate');
 const questionInput = document.getElementById('questionTemplate');
+const inlineMathInput = document.getElementById('inlineMathTemplate');
+const displayMathInput = document.getElementById('displayMathTemplate');
 
 // State
 let profiles = {};
@@ -27,23 +25,12 @@ document.addEventListener('DOMContentLoaded', loadData);
 
 function loadData() {
     browser.storage.local.get(null).then((items) => {
-        // Initialization Logic (Clean start / Support new schema only)
-        if (!items.profiles) {
-            console.log("No profiles found. Initializing fresh defaults.");
-            const defaultId = uuid();
-            profiles = {
-                [defaultId]: {
-                    name: "Default",
-                    pageTemplate: DEFAULTS.pageTemplate,
-                    questionTemplate: DEFAULTS.questionTemplate,
-                    filenameTemplate: DEFAULTS.filenameTemplate
-                }
-            };
-            activeProfileId = defaultId;
-            saveAll(false); // Save initialization immediately
-        } else {
+        // Initialization Logic (Trusted from background)
+        if (items.profiles) {
             profiles = items.profiles;
             activeProfileId = items.activeProfileId;
+        } else {
+            console.log("No profiles found. Waiting for background script or reinstall.");
         }
         renderManager();
     });
@@ -106,9 +93,11 @@ document.getElementById('btnNew').addEventListener('click', () => {
     const newId = uuid();
     profiles[newId] = {
         name: name,
-        pageTemplate: DEFAULTS.pageTemplate,
-        questionTemplate: DEFAULTS.questionTemplate,
-        filenameTemplate: DEFAULTS.filenameTemplate
+        pageTemplate: "",
+        questionTemplate: "",
+        filenameTemplate: "",
+        inlineMathTemplate: "",
+        displayMathTemplate: ""
     };
 
     // Select the new profile
@@ -166,9 +155,11 @@ function startEditing(id) {
     const p = profiles[id];
 
     editorTitle.textContent = `Editing conversion profile ${p.name}`;
-    filenameInput.value = p.filenameTemplate || DEFAULTS.filenameTemplate; // fallback if missing property
-    pageInput.value = p.pageTemplate;
-    questionInput.value = p.questionTemplate;
+    filenameInput.value = p.filenameTemplate || "";
+    pageInput.value = p.pageTemplate || "";
+    questionInput.value = p.questionTemplate || "";
+    inlineMathInput.value = p.inlineMathTemplate || "";
+    displayMathInput.value = p.displayMathTemplate || "";
 
     viewManager.classList.add('hidden');
     viewEditor.classList.remove('hidden');
@@ -180,6 +171,8 @@ document.getElementById('editorOk').addEventListener('click', () => {
         profiles[editingProfileId].filenameTemplate = filenameInput.value;
         profiles[editingProfileId].pageTemplate = pageInput.value;
         profiles[editingProfileId].questionTemplate = questionInput.value;
+        profiles[editingProfileId].inlineMathTemplate = inlineMathInput.value;
+        profiles[editingProfileId].displayMathTemplate = displayMathInput.value;
     }
 
     // Return to Manager

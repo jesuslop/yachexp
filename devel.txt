@@ -21,8 +21,11 @@ current repo code is for a firefox exension for exporting chatgpt conversations 
 
 - - - 
 
-Nobre fichero MD configurable (prefijo, fecha)
+desarrollo
+	onInstall
+		clean data:
+			this firefox
+				await browser.storage.local.clear()     // wipe only your extension
+producción
+	preservar extension local storage on updates
 
-clean data:
-	this firefox
-		await browser.storage.local.clear()     // wipe only your extension
