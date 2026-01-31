@@ -4,6 +4,7 @@
 <head>
     <meta charset="utf-8">
     <title>ChatGPT Exporter Settings</title>
+    <link rel="icon" href="icon.svg">
     <link rel="stylesheet" href="options.css">
 </head>
 
@@ -12,7 +13,10 @@
         <!-- Sidebar: Profile List -->
         <aside class="sidebar">
             <div class="sidebar-header">
-                <h2>Profiles</h2>
+                <div class="logo-area">
+                    <img src="icon.svg" alt="Extension Logo">
+                </div>
+                <h2>Export profiles</h2>
             </div>
             <div class="sidebar-content">
                 <ul id="profileList" class="profile-list">
@@ -23,6 +27,10 @@
                 <button id="btnNew" class="sidebar-btn">+ Create New</button>
                 <button id="btnDelete" class="sidebar-btn danger">Delete Selected</button>
                 <button id="btnSave" class="sidebar-btn primary">Save Settings</button>
+                <div class="separator" style="margin: 8px 0; border-bottom: 1px solid #eee;"></div>
+                <button id="btnExport" class="sidebar-btn">Export Settings</button>
+                <button id="btnImport" class="sidebar-btn">Import Settings</button>
+                <input type="file" id="importFile" accept=".json" style="display: none;">
                 <div id="status" class="status"></div>
             </div>
         </aside>

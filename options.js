@@ -216,6 +216,74 @@ document.getElementById('btnSave').addEventListener('click', () => {
 
 
 
+
+// --- Export / Import Logic ---
+
+document.getElementById('btnExport').addEventListener('click', () => {
+    // 1. Get current version from manifest
+    const manifest = browser.runtime.getManifest();
+    const version = manifest.version;
+
+    // 2. Save version to storage first (as requested)
+    browser.storage.local.set({ extension_version: version }).then(() => {
+        // 3. Get all data
+        browser.storage.local.get(null).then((items) => {
+            // 4. Serialize and Download
+            const json = JSON.stringify(items, null, 2);
+            const blob = new Blob([json], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+            const outputFilename = `yachexp-settings-${version}-${timestamp}.json`;
+
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = outputFilename;
+            a.click();
+
+            URL.revokeObjectURL(url);
+            showStatus("Settings Exported!");
+        });
+    });
+});
+
+document.getElementById('btnImport').addEventListener('click', () => {
+    document.getElementById('importFile').click();
+});
+
+document.getElementById('importFile').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+        try {
+            const data = JSON.parse(event.target.result);
+
+            // Basic validation: check if profiles exist
+            if (!data.profiles) {
+                alert("Invalid settings file: missing 'profiles'.");
+                return;
+            }
+
+            if (confirm("This will overwrite current settings. Continue?")) {
+                browser.storage.local.clear().then(() => {
+                    browser.storage.local.set(data).then(() => {
+                        alert("Settings imported successfully!");
+                        window.location.reload();
+                    });
+                });
+            }
+        } catch (err) {
+            console.error(err);
+            alert("Error parsing settings file: " + err.message);
+        }
+    };
+    reader.readAsText(file);
+    // Reset input so same file selection triggers change if needed
+    e.target.value = '';
+});
+
 // --- Utils ---
 
 function uuid() {
