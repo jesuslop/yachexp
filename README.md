@@ -5,22 +5,18 @@
 This is a Firefox extension to export ChatGPT conversations from the [chatgpt.com](https://chatgpt.com) to clean Markdown, including custom template support of the export process. This extension is intended for users who do not have API access but want to download a clean Markdown version of their conversations. 
 
 ![img1](./doc-img/conversion-example.png)
-<center><small>Left: ChatGPT in Firefox<br>Right: Exported text in Typora</small></center>
 
 It is a healthy habit to download local versions of valuable conversations for future reference to future proof them since conversation links can and do "rot" (there is no persistence commitment from openAI) and hand picked saving helps one to highlight important exchanges from the noise. Saving to local Markdown lets to adjoint the conversations to other annotation user content, so users can cross-reference and further integrate personal and AI-produced content with dedicated tools/workflow.
 
 Since ChatGPT conversations can get very long, the tool lets the user to select what questions he wants to export (can select all of them) from conversation snippet hints.
 
 ![img1](./doc-img/question-selection-small.png)
-<center><small>Selection of questions to export</small></center>
 
 The export process is highly customizable, letting you to configure your own export profiles each targeting the exact Markdown variety that the tools in your workflow expect, say Obsidian, Typora, etc. 
 
 For instance one can format questions as Obsidian *callouts*, and control the callout (or "admonition") visual aspect with an Obsidian plugin such as the [admonition plugin](https://github.com/javalent/admonitions), and adding your desired formatting with an Obsidian CSS snippet (I am using [this one](docs/obsidian-bubble-callout.css) for a nice round corners "bubble" effect).
 
 ![img1](./doc-img/bubble-question-small.png)
-
-<center><small>Question formatting as Obsidian callouts</small></center>
 
 Similarly you can adjust the front-matter of the generated markdown by including your data in your desired format or by including the data as semantic document properties (if your tool supports them, as Obsidian does).
 
@@ -57,7 +53,6 @@ The extension uses the [Turndown](https://github.com/turndownjs/turndown) librar
 - The second pass runs a customized Turndown conversion, tweaking the process with custom rules to get good-looking output for complex nested lists or code snippets.
 
 Both passes obey rules that operate at the abstract syntax tree level of the representation trying to avoid brittle regexp quick and dirty hacks, but this kind of tool can break depending on the future behaviour of the [chatgpt.com](chatgpt.com) site. 
-
 
 ## Installation (AMO Unlisted)
 1. Download the unlisted XPI from the release page.
