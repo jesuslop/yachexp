@@ -35,7 +35,7 @@ Templating is very easy to use. All it does is substituting named place-holders 
   3. Inline and displayed LaTeX math expressions.
 - Multiple exporting profiles
 - Mature HTML to Markdown conversion third party engine: [Turndown](https://github.com/mixmark-io/turndown)
-- Configuration backup/restore by export/inport readable JSON configuration files.
+- Configuration backup/restore by export/import readable JSON configuration files.
 
 ## Scope
 
