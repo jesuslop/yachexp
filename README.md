@@ -10,21 +10,21 @@ It is a healthy habit to download local versions of valuable conversations for f
 
 Since ChatGPT conversations can get very long, the tool lets the user to select what questions he wants to export (can select all of them) from conversation snippet hints.
 
-![img1](./doc-img/question-selection-small2.png)
+<img src="./doc-img/question-selection2.png" width="500">
 
 The export process is highly customizable, letting you to configure your own export profiles each targeting the exact Markdown variety that the tools in your workflow expect, say Obsidian, Typora, etc. 
 
-For instance one can format questions as Obsidian *callouts*, and control the callout (or "admonition") visual aspect with an Obsidian plugin such as the [admonition plugin](https://github.com/javalent/admonitions), and adding your desired formatting with an Obsidian CSS snippet (I am using [this one](docs/obsidian-bubble-callout.css) for a nice round corners "bubble" effect).
+For instance one can format questions as Obsidian callouts/"admonitions", and control their visual aspect with an Obsidian plugin such as the [admonition plugin](https://github.com/javalent/admonitions), and adding your desired formatting with an Obsidian CSS snippet (I am using [this one](docs/obsidian-bubble-callout.css) for a nice round corners "bubble" effect).
 
 ![img1](./doc-img/bubble-question-small.png)
 
 Similarly you can adjust the front-matter of the generated markdown by including your data in your desired format or by including the data as semantic document properties (if your tool supports them, as Obsidian does).
 
-Care has been taking regarding outputting LaTeX mathematical expressions right. There are two widespread traditions to express math in markdown, in one math in Markdown is delimited by dollar and double-dollar delimiters (for inline and displayed math styles), and in the other they are delimited by round and square brackets. This tool lets you decide your exact rendering. For instance, you can add LaTeX `equation` environment around displayed equation.
+Care has been taking regarding outputting LaTeX mathematical expressions right. There are two conventions to express math in Markdown, in one math is delimited by dollar and double-dollar delimiters (for inline and displayed math styles), and in the other they are delimited by round and square brackets. This tool lets you decide your exact rendering. For instance, you can add LaTeX `equation` environment around displayed equation.
 
 One can configure as many export profiles as desired, for instance if targeting different Markdown-consuming tools. Each export profile allows template-based customization so you can tailor the export process to fit your exact needs with a reasonable balance in configuration effort vs export flexibility. 
 
-Templating is very easy to use. All it does is substituting named place-holders in curly braces by their values. For instance one could specify `${latex}$` in the inline math template to use single dollar delimiters for inline math, where `latex` can be subtituted by, say, `e=mc^2` for the famous equation in the conversation.
+Templating is very easy to use. All it does is substituting named place-holders in curly braces by their values. For instance one could specify `${latex}$` in the inline math template to use single dollar delimiters for inline math, where `latex` can be subtituted by, say, `e=mc^2` for the famous equation in the conversation. Line breaks are respected.
 
 ## Features
 
@@ -34,8 +34,8 @@ Templating is very easy to use. All it does is substituting named place-holders 
   2. User question format
   3. Inline and displayed LaTeX math expressions.
 - Multiple exporting profiles
-- Mature HTML to Markdown conversion third party engine: [Turndown](https://github.com/turndownjs/turndown)
-- Configuration backup/restore by export/inport readable JSON configuration files.
+- Mature HTML to Markdown conversion third party engine: [Turndown](https://github.com/mixmark-io/turndown)
+- Configuration backup/restore by export/import readable JSON configuration files.
 
 ## Scope
 
@@ -45,9 +45,9 @@ The project does not aim to cover the full variability of all possible conversat
 
 This is an beta release. Expect rough edges, and please report bugs with clear reproduction steps.
 
-## Details
+## Internals
 
-The extension uses the [Turndown](https://github.com/turndownjs/turndown) library as workhorse core converter and has a double pass conversion stragy:
+The extension uses the [Turndown](https://github.com/mixmark-io/turndown) library as workhorse core converter and has a double pass conversion stragy:
 
 - First pass prepares received HTML code for the conversation, with main task to extract the LaTeX original source intent from math expressions.
 - The second pass runs a customized Turndown conversion, tweaking the process with custom rules to get good-looking output for complex nested lists or code snippets.
