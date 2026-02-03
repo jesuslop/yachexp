@@ -20,7 +20,7 @@ For instance one can format questions as Obsidian *callouts*, and control the ca
 
 Similarly you can adjust the front-matter of the generated markdown by including your data in your desired format or by including the data as semantic document properties (if your tool supports them, as Obsidian does).
 
-Care has been taking regarding outputting LaTeX mathematical expressions right. There are two widespread traditions to express math in markdown, in one math in Markdown is delimited by dollar and double-dollar delimiters (for inline and displayed math styles), and in the other they are delimited by round and square brackets. This tool lets you decide your exact rendering. For instance, you can add LaTeX `equation` environment around displayed equation.
+Care has been taking regarding outputting LaTeX mathematical expressions right. There are two conventions to express math in Markdown, in one math is delimited by dollar and double-dollar delimiters (for inline and displayed math styles), and in the other they are delimited by round and square brackets. This tool lets you decide your exact rendering. For instance, you can add LaTeX `equation` environment around displayed equation.
 
 One can configure as many export profiles as desired, for instance if targeting different Markdown-consuming tools. Each export profile allows template-based customization so you can tailor the export process to fit your exact needs with a reasonable balance in configuration effort vs export flexibility. 
 
