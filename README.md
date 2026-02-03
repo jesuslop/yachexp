@@ -22,19 +22,9 @@ Similarly you can adjust the front-matter of the generated markdown by exporting
 
 Templating is very easy to use. All it does is substituting named place-holders in curly braces by their values. For instance one could specify `${latex}$` in the inline math template to use single dollar delimiters for inline math, where `latex` can be subtituted by, say, `e=mc^2` for the famous equation in the conversation. Line breaks are respected.
 
-Care has been taking regarding outputting LaTeX mathematical expressions right. There are two conventions to express math in Markdown, in one math is delimited by dollar and double-dollar delimiters (for inline and displayed math styles), and in the other they are delimited by round and square brackets. This tool lets you decide your exact rendering. For instance, you can add LaTeX `equation` environment around displayed equation and use `$$` delimiters using this displayed equation temaple example:
-
-```latex
-$$
-\begin{equation}
-{latex}
-\end{equation}
-$$
-```
+Care has been taking regarding outputting LaTeX mathematical expressions right. There are two conventions to express math in Markdown, in one math is delimited by dollar and double-dollar delimiters (for inline and displayed math styles), and in the other they are delimited by round and square brackets. This tool lets you decide your exact rendering. 
 
 One can configure as many export profiles as desired, for instance if targeting different Markdown-consuming tools. Each export profile allows template-based customization so you can tailor the export process to fit your exact needs with a reasonable balance in configuration effort vs export flexibility. 
-
-
 
 ## Features
 
