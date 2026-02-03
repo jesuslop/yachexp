@@ -45,7 +45,7 @@ The project does not aim to cover the full variability of all possible conversat
 
 This is an beta release. Expect rough edges, and please report bugs with clear reproduction steps.
 
-## Details
+## Internals
 
 The extension uses the [Turndown](https://github.com/mixmark-io/turndown) library as workhorse core converter and has a double pass conversion stragy:
 
