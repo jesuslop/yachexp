@@ -10,7 +10,7 @@ It is a healthy habit to download local versions of valuable conversations for f
 
 Since ChatGPT conversations can get very long, the tool lets the user to select what questions he wants to export (can select all of them) from conversation snippet hints.
 
-![img1](./doc-img/question-selection-small.png)
+![img1](./doc-img/question-selection-small2.png)
 
 The export process is highly customizable, letting you to configure your own export profiles each targeting the exact Markdown variety that the tools in your workflow expect, say Obsidian, Typora, etc. 
 
