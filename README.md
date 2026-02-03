@@ -34,7 +34,7 @@ Templating is very easy to use. All it does is substituting named place-holders 
   2. User question format
   3. Inline and displayed LaTeX math expressions.
 - Multiple exporting profiles
-- Mature HTML to Markdown conversion third party engine: [Turndown](https://github.com/turndownjs/turndown)
+- Mature HTML to Markdown conversion third party engine: [Turndown](https://github.com/mixmark-io/turndown)
 - Configuration backup/restore by export/inport readable JSON configuration files.
 
 ## Scope
@@ -47,7 +47,7 @@ This is an beta release. Expect rough edges, and please report bugs with clear r
 
 ## Details
 
-The extension uses the [Turndown](https://github.com/turndownjs/turndown) library as workhorse core converter and has a double pass conversion stragy:
+The extension uses the [Turndown](https://github.com/mixmark-io/turndown) library as workhorse core converter and has a double pass conversion stragy:
 
 - First pass prepares received HTML code for the conversation, with main task to extract the LaTeX original source intent from math expressions.
 - The second pass runs a customized Turndown conversion, tweaking the process with custom rules to get good-looking output for complex nested lists or code snippets.
