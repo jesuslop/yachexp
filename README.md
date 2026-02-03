@@ -18,7 +18,7 @@ For instance one can format questions as Obsidian callouts/"admonitions", and co
 
 ![img1](./doc-img/bubble-question-small.png)
 
-Similarly you can adjust the front-matter of the generated markdown by including your data in your desired format or by including the data as semantic document properties (if your tool supports them, as Obsidian does).
+Similarly you can adjust the front-matter of the generated markdown by exporting the supplied document attributes such as title or link in your desired format or including them as semantic document properties (if your tool supports them, as Obsidian does).
 
 Templating is very easy to use. All it does is substituting named place-holders in curly braces by their values. For instance one could specify `${latex}$` in the inline math template to use single dollar delimiters for inline math, where `latex` can be subtituted by, say, `e=mc^2` for the famous equation in the conversation. Line breaks are respected.
 
