@@ -1,10 +1,6 @@
-<table style="border: none; width: 100%;">
-<tr>
-<td align="left"><h1>Yet another ChatGPT exporter</h1></td>
-<td align="right"><img src="icon.svg" width="100"></td>
-</tr>
-</table>
+# Yet another ChatGPT exporter
 
+<img src="icon.svg" width="100">
 
 This is a Firefox extension to export ChatGPT conversations from the [chatgpt.com](https://chatgpt.com) to clean Markdown, including custom template support of the export process. This extension is intended for users who do not have API access but want to download a clean Markdown version of their conversations. 
 
