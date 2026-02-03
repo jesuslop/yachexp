@@ -70,8 +70,8 @@ Both passes obey rules that operate at the abstract syntax tree level of the rep
 3. Confirm permissions and refresh any ChatGPT tabs.
 
 ## Known Limitations
+- Image carousell not exported.
 - Internal rendering changes on chatgpt.com could break extension functionality.
-- Some rich content may not convert perfectly to Markdown.
 
 ## Support
 While the project is MIT-licensed, free-forever open source software (FOSS), users are invited to help project continuity by reporting bugs and by funding the work. 
