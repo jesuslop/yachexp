@@ -49,7 +49,7 @@ One can configure as many export profiles as desired, for instance if targeting 
 
 ## Scope
 
-The project does not aim to cover the full variability of all possible conversations a user can have, it is a single person effort to solve a personal task made available to other people with a similar need. For instance image carousells are just dropped and will remain unsupported. 
+The project does not aim to cover the full variability of all possible conversations a user can have, it is a single person effort to solve a personal task made available to other people with a similar need. For instance image carousels are just dropped and will remain unsupported. 
 
 ## Beta Notice
 
@@ -70,7 +70,7 @@ Both passes obey rules that operate at the abstract syntax tree level of the rep
 3. Confirm permissions and refresh any ChatGPT tabs.
 
 ## Known Limitations
-- Image carousell not exported.
+- Image carousel not exported.
 - Internal rendering changes on chatgpt.com could break extension functionality.
 
 ## Support
