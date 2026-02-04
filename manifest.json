@@ -3,7 +3,7 @@
   "name": "Yet another ChatGPT Exporter",
   "author": "Jesús López",
   "homepage_url": "https://github.com/jesuslop/yachexp",
-  "version": "1.0",
+  "version": "0.1.0",
   "description": "Export ChatGPT conversations as clean Markdown with custom template support.",
   "content_scripts": [
     {
