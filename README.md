@@ -14,7 +14,7 @@ Since ChatGPT conversations can get very long, the tool lets you select which qu
 
 The export process is highly customizable, letting you configure export profiles that target the exact Markdown flavor your tools expect, such as Obsidian or Typora.
 
-For instance, you can format questions as Obsidian callouts/admonitions and control their visual style with an Obsidian plugin such as the [admonition plugin](https://github.com/javalent/admonitions), plus an Obsidian CSS snippet (I use [this one](./extra/obsidian-bubble-callout.css) for a rounded "bubble" effect).
+For instance, you can format questions as Obsidian callouts/admonitions and control their visual style with an Obsidian plugin such as the [admonition plugin](https://plugins.javalent.com/admonitions), plus an Obsidian CSS snippet (I use [this one](./extra/obsidian-bubble-callout.css) for a rounded "bubble" effect).
 
 ![img1](./doc-img/bubble-question-small.png)
 
