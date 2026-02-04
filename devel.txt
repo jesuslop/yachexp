@@ -49,3 +49,15 @@ ko-fi donation link
  
 Please make sure the add-on manifest’s update_url is provided, as this is the URL where Firefox finds updates for automatic deployment to your users. 
 
+
+instalar web-ext
+	herramienta para empaquetar y/o publicar extensión de firefox
+		dependencias
+			node.js
+				usar version manager para node?
+					no
+				scoop install nodejs-lts
+				
+	npm install --global web-ext
+
+
