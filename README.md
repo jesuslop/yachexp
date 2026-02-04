@@ -2,29 +2,29 @@
 
 <img src="icon.svg" width="100">
 
-This is a Firefox extension to export ChatGPT conversations from the [chatgpt.com](https://chatgpt.com) to clean Markdown, including custom template support of the export process. This extension is intended for users who do not have API access but want to download a clean Markdown version of their conversations. 
+This is a Firefox extension to export ChatGPT conversations from [chatgpt.com](https://chatgpt.com) to clean Markdown, including custom template support for the export process. This extension is intended for users who do not have API access but want to download a clean Markdown version of their conversations.
 
 ![img1](./doc-img/conversion-example.png)
 
-It is a healthy habit to download local versions of valuable conversations for future reference to future proof them since conversation links can and do "rot" (there is no persistence commitment from openAI) and hand picked saving helps one to highlight important exchanges from the noise. Saving to local Markdown lets to adjoint the conversations to other annotation user content, so users can cross-reference and further integrate personal and AI-produced content with dedicated tools/workflow.
+It is a healthy habit to download local versions of valuable conversations for future reference and to future-proof them, since conversation links can and do "rot" (there is no persistence commitment from OpenAI). Hand-picked saving helps highlight important exchanges from the noise. Saving to local Markdown lets you attach conversations to other annotated content, so you can cross-reference and integrate personal and AI-produced content with your own tools and workflow.
 
-Since ChatGPT conversations can get very long, the tool lets the user to select what questions he wants to export (can select all of them) from conversation snippet hints.
+Since ChatGPT conversations can get very long, the tool lets you select which questions to export (including all of them) from conversation snippet hints.
 
 <img src="./doc-img/question-selection2.png" width="500">
 
-The export process is highly customizable, letting you to configure your own export profiles each targeting the exact Markdown variety that the tools in your workflow expect, say Obsidian, Typora, etc. 
+The export process is highly customizable, letting you configure export profiles that target the exact Markdown flavor your tools expect, such as Obsidian or Typora.
 
-For instance one can format questions as Obsidian callouts/"admonitions", and control their visual aspect with an Obsidian plugin such as the [admonition plugin](https://github.com/javalent/admonitions), and adding your desired formatting with an Obsidian CSS snippet (I am using [this one](./extra/obsidian-bubble-callout.css) for a nice round corners "bubble" effect).
+For instance, you can format questions as Obsidian callouts/admonitions and control their visual style with an Obsidian plugin such as the [admonition plugin](https://github.com/javalent/admonitions), plus an Obsidian CSS snippet (I use [this one](./extra/obsidian-bubble-callout.css) for a rounded "bubble" effect).
 
 ![img1](./doc-img/bubble-question-small.png)
 
-Similarly you can adjust the front-matter of the generated markdown by exporting the supplied document attributes such as title or link in your desired format or including them as semantic document properties (if your tool supports them, as Obsidian does).
+Similarly, you can adjust the front-matter of the generated Markdown by exporting document attributes (such as title or link) in your desired format, or by including them as semantic document properties (if your tool supports them, as Obsidian does).
 
-Templating is very easy to use. All it does is substituting named place-holders in curly braces by their values. For instance one could specify `${latex}$` in the inline math template to use single dollar delimiters for inline math, where `latex` can be subtituted by, say, `e=mc^2` for the famous equation in the conversation. Line breaks are respected.
+Templating is easy to use. It substitutes named placeholders in curly braces with their values. For instance, you could specify `${latex}$` in the inline math template to use single-dollar delimiters for inline math, where `latex` can be substituted by, say, `e=mc^2` for the famous equation in the conversation. Line breaks are respected.
 
-Care has been taking regarding outputting LaTeX mathematical expressions right. There are two conventions to express math in Markdown, in one math is delimited by dollar and double-dollar delimiters (for inline and displayed math styles), and in the other they are delimited by round and square brackets. This tool lets you decide your exact rendering. 
+Care has been taken to output LaTeX mathematical expressions correctly. There are two common conventions to express math in Markdown: one uses dollar and double-dollar delimiters (for inline and displayed math styles), and the other uses round and square brackets. This tool lets you decide your exact rendering.
 
-One can configure as many export profiles as desired, for instance if targeting different Markdown-consuming tools. Each export profile allows template-based customization so you can tailor the export process to fit your exact needs with a reasonable balance in configuration effort vs export flexibility. 
+You can configure as many export profiles as you want, for instance when targeting different Markdown-consuming tools. Each export profile allows template-based customization so you can tailor the export process to fit your exact needs with a reasonable balance between configuration effort and export flexibility.
 
 ## Features
 
@@ -39,20 +39,20 @@ One can configure as many export profiles as desired, for instance if targeting 
 
 ## Scope
 
-The project does not aim to cover the full variability of all possible conversations a user can have, it is a single person effort to solve a personal task made available to other people with a similar need. For instance image carousels are just dropped and will remain unsupported. 
+The project does not aim to cover the full variability of all possible conversations a user can have. It is a single-person effort to solve a personal task and share it with others who have a similar need. For instance, image carousels are dropped and will remain unsupported.
 
 ## Beta Notice
 
-This is an beta release. Expect rough edges, and please report bugs with clear reproduction steps.
+This is a beta release. Expect rough edges, and please report bugs with clear reproduction steps.
 
 ## Internals
 
-The extension uses the [Turndown](https://github.com/mixmark-io/turndown) library as workhorse core converter and has a double pass conversion stragy:
+The extension uses the [Turndown](https://github.com/mixmark-io/turndown) library as converter engine and has a double-pass strategy:
 
-- First pass prepares received HTML code for the conversation, with main task to extract the LaTeX original source intent from math expressions.
+- The first pass prepares received HTML for the conversation, with the main task of extracting the LaTeX source intent from math expressions.
 - The second pass runs a customized Turndown conversion, tweaking the process with custom rules to get good-looking output for complex nested lists or code snippets.
 
-Both passes obey rules that operate at the abstract syntax tree level of the representation trying to avoid brittle regexp quick and dirty hacks, but this kind of tool can break depending on the future behaviour of the [chatgpt.com](chatgpt.com) site. 
+Both passes use rules that operate at the abstract syntax tree level to avoid brittle regex hacks, but this kind of tool can break depending on future changes to the [chatgpt.com](https://chatgpt.com) site.
 
 ## Installation (AMO Unlisted)
 1. Download the unlisted XPI from the release page.
@@ -66,7 +66,7 @@ Both passes obey rules that operate at the abstract syntax tree level of the rep
 ## Support
 While the project is MIT-licensed, free-forever open source software (FOSS), users are invited to help project continuity by reporting bugs and by funding the work. 
 
-KO FI <---------
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/S6S01TM19B)
 
 ## License
 

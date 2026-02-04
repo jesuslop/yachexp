@@ -1,8 +1,10 @@
 {
   "manifest_version": 3,
   "name": "Yet another ChatGPT Exporter",
+  "author": "Jesús López",
+  "homepage_url": "https://github.com/jesuslop/yachexp",
   "version": "1.0",
-  "description": "Export ChatGPT conversations as clean Markdown with LaTeX and Obsidian callouts",
+  "description": "Export ChatGPT conversations as clean Markdown with custom template support.",
   "content_scripts": [
     {
       "matches": [
@@ -17,7 +19,7 @@
   ],
   "browser_specific_settings": {
     "gecko": {
-      "id": "chatgpt-markdown-exporter@chatgpt-markdown-exporter"
+      "id": "yachexp@chatgpt-markdown-exporter"
     }
   },
   "permissions": [

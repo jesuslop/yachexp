@@ -29,7 +29,23 @@ desarrollo
 producción
 	preservar extension local storage on updates
 
-issues
-	code blocks feos
 
 Release Download Counts 
+
+
+https://addons.mozilla.org/en-US/developers/
+
+https://extensionworkshop.com/documentation/develop/getting-started-with-web-ext/
+
+
+Stripe payment link (target cuenta del Santander)
+	https://donate.stripe.com/fZu00ce3ecHU9PF1fX2wU00
+
+
+ Ko-fi.com/jesuslop 
+
+ko-fi donation link
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/S6S01TM19B)
+ 
+Please make sure the add-on manifest’s update_url is provided, as this is the URL where Firefox finds updates for automatic deployment to your users. 
+

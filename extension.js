@@ -147,16 +147,18 @@
 
 
     // Remove the extra spaces Turndown adds after list items markers
+
+    // save original rule for reuse
     const defaultLiRule = turndownService.rules.array.find(rule =>
       rule.filter === 'li'
     );
-
     const originalReplacement = defaultLiRule.replacement;
 
+    // Apply Turndown li rule, then replace extra spaces after list items markers
     turndownService.addRule('li-trimmer', {
       filter: 'li',
       replacement: function (content, node, options) {
-        // 1. Get the standard Markdown string from Turndown
+        // 1. Get Turndown string for list item
         let markdown = originalReplacement.call(this, content, node, options);
 
         // 2. The Regex:
@@ -168,6 +170,22 @@
         return markdown.replace(/^(\s*)(-|\d+\.)[ \t\xA0]+/, '$1$2 ');
       }
     });
+
+    // There can be intermediate tags between <pre> and <code>
+    turndownService.addRule('preCodeToMarkdown', {
+      filter: function (node) {
+        // Ensure the node is a <pre> tag and contains a <code> tag
+        return node.nodeName === 'PRE' && node.querySelector('code');
+      },
+      replacement: function (content, node) {
+        // Extract the actual text content inside the <code> tag, preserving newlines
+        const codeContent = node.querySelector('code').textContent; // Get raw text
+
+        // Return the content as a Markdown code block (triple backticks)
+        return '```\n' + codeContent + '\n```';
+      }
+    });
+
 
     // Convert to Markdown
     const markdown = turndownService.turndown(html);

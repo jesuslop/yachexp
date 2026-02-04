@@ -1,0 +1,14 @@
+Currently open project is a custom Firefox extension to export ChatGPT conversations from chatgpt.com to Markdown for the users of lower tier ChatGPT plans (Free and Go) that include no API access and can't attack the official exporting API endpont, but can still read the user-facing rendered page DOM and need to convert and export that to a Markdown file.
+
+This is a hobby project from a solo developer and is now in a state of the main features codepaths already working in develpment environment for human operated tests that are not going to be automated soon.
+
+Now I am wanting to release a beta version for early adopters as FOSS with a MIT license and provide it as-is with no strings attached from either side. Project lives in a personal public GitHub repository and is developed in a Windows machine with visual studio code. I have had former conversations in chatgpt about several aspects of its construction.
+
+I am new to publishing browser extensions but not to web development or software engineering. I need asistance going from an extension that "works in my machine" literally, to having a workflow to generate as release deliverable a packed XPI file that an advanced willful Firefox user can download and install. I don't need nor want the extension to be listed in AMO at this still developing stage. It would be desirable though to get things set up in a way if a user install the XPI file of the extension, he would be subscribed to an automatic update.
+
+I am interested in adding a simple "buy me a coffee" development financial supporting mechanism with an easy pathway to provided credit card or bank account.
+
+Being a small project, hobby and solo, I'd prefer a simple solution to DevOps system with direct delivery, in a fast cycle code, hand test, and release. 
+
+The specific task I am submitting now is to create an action plan in a document that I can review, without modifying anything else of the project. Just create the action plan. You can offer alternative solutions for subgoals explainig pros and cons.
+
