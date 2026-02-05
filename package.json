@@ -1,0 +1,13 @@
+{
+  "name": "yachexp",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Local tooling for dependency pinning and vendoring.",
+  "scripts": {
+    "deps:sync": "powershell -ExecutionPolicy Bypass -File scripts\\copy-deps.ps1"
+  },
+  "devDependencies": {
+    "turndown": "7.1.2",
+    "turndown-plugin-gfm": "1.0.2"
+  }
+}

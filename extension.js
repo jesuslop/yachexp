@@ -85,19 +85,16 @@
       const latex = annotation.textContent;
       const display = math.getAttribute('display') === 'block' || latex.includes('\n');
 
-      let replacement = '';
       const template = display ? displayMathTemplate : inlineMathTemplate;
 
-      replacement = template
-        .replace(/\n/g, '<br>')
-        .replace('{latex}', latex);
-
-      const range = document.createRange();
-      const fragment = range.createContextualFragment(replacement);
-
-      // Now you can use replaceWith because 'fragment' is a real DOM node
+      const fragment = doc.createDocumentFragment();
+      const templateWithLatex = template.replace('{latex}', latex);
+      const lines = templateWithLatex.split('\n');
+      lines.forEach((line, index) => {
+        if (index > 0) fragment.appendChild(doc.createElement('br'));
+        fragment.appendChild(doc.createTextNode(line));
+      });
       math.replaceWith(fragment);
-
     });
 
     return doc.body.innerHTML;

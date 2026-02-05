@@ -19,7 +19,12 @@
   ],
   "browser_specific_settings": {
     "gecko": {
-      "id": "yachexp@chatgpt-markdown-exporter"
+      "id": "yachexp@chatgpt-markdown-exporter",
+      "data_collection_permissions": {
+        "required": [
+          "none"
+        ]
+      }
     }
   },
   "permissions": [
