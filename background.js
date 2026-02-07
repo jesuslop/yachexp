@@ -26,6 +26,11 @@ browser.runtime.onInstalled.addListener(() => {
     });
 });
 
-browser.action.onClicked.addListener(() => {
-    browser.runtime.openOptionsPage();
+browser.action.onClicked.addListener((tab) => {
+    if (!tab || !tab.id) {
+        return;
+    }
+    browser.tabs.sendMessage(tab.id, { type: 'yachexp-export' }).catch(() => {
+        // Ignore errors when the active tab does not have the content script
+    });
 });

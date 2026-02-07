@@ -310,52 +310,6 @@
   }
 
   /********************************************************************
-   * Generation idle detection
-   ********************************************************************/
-
-  function waitForGenerationIdle(cb) {
-    const obs = new MutationObserver(() => {
-      const stopBtn = document.querySelector('button[aria-label*="Stop"]');
-      if (!stopBtn) {
-        obs.disconnect();
-        cb();
-      }
-    });
-    obs.observe(document.body, { childList: true, subtree: true });
-  }
-
-  /********************************************************************
-   * UI: Export button
-   ********************************************************************/
-
-  function createExportButton() {
-    const btn = document.createElement('button');
-    btn.textContent = 'Export MD';
-    btn.style.cssText = `
-      position: fixed;
-      bottom: 24px;
-      right: 24px;
-      z-index: 9999;
-      padding: 14px 18px;
-      background: #10a37f;
-      color: #fff;
-      border: none;
-      border-radius: 8px;
-      font-size: 15px;
-      cursor: pointer;
-      opacity: 0.5;
-      pointer-events: none;
-    `;
-    document.body.appendChild(btn);
-    return btn;
-  }
-
-  function enableButton(btn) {
-    btn.style.opacity = '1';
-    btn.style.pointerEvents = 'auto';
-  }
-
-  /********************************************************************
    * UI: Modal dialog
    ********************************************************************/
 
@@ -492,22 +446,31 @@
 
 
   /********************************************************************
-   * Bootstrap
+   * Export flow
    ********************************************************************/
 
-  const exportButton = createExportButton();
-
-  waitForGenerationIdle(() => {
-    enableButton(exportButton);
-  });
-
-  exportButton.addEventListener('click', () => {
+  function startExport() {
     const pairs = buildQAPairs();
     if (!pairs.length) {
       alert('No exportable conversation found.');
       return;
     }
     createModal(pairs);
+  }
+
+  function handleExportRequest() {
+    startExport();
+  }
+
+  /********************************************************************
+   * Bootstrap
+   ********************************************************************/
+
+  browser.runtime.onMessage.addListener((message) => {
+    if (!message || message.type !== 'yachexp-export') {
+      return;
+    }
+    handleExportRequest();
   });
 
 })();

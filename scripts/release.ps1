@@ -20,7 +20,7 @@ if ([string]::IsNullOrWhiteSpace($config.WEB_EXT_API_KEY) -or [string]::IsNullOr
 }
 
 Push-Location $root
-try {
+try {this
   & "$root\scripts\package.ps1"
   web-ext sign --source-dir $root --artifacts-dir $dist --channel unlisted --api-key $config.WEB_EXT_API_KEY --api-secret $config.WEB_EXT_API_SECRET
 }
