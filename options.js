@@ -224,26 +224,23 @@ document.getElementById('btnExport').addEventListener('click', () => {
     const manifest = browser.runtime.getManifest();
     const version = manifest.version;
 
-    // 2. Save version to storage first (as requested)
-    browser.storage.local.set({ extension_version: version }).then(() => {
-        // 3. Get all data
-        browser.storage.local.get(null).then((items) => {
-            // 4. Serialize and Download
-            const json = JSON.stringify(items, null, 2);
-            const blob = new Blob([json], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
+    // 2. Get all data (do not persist extension version)
+    browser.storage.local.get(null).then((items) => {
+        // 3. Serialize and Download
+        const json = JSON.stringify(items, null, 2);
+        const blob = new Blob([json], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
 
-            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-            const outputFilename = `yachexp-settings-${version}-${timestamp}.json`;
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+        const outputFilename = `yachexp-settings-${version}-${timestamp}.json`;
 
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = outputFilename;
-            a.click();
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = outputFilename;
+        a.click();
 
-            URL.revokeObjectURL(url);
-            showStatus("Settings Exported!");
-        });
+        URL.revokeObjectURL(url);
+        showStatus("Settings Exported!");
     });
 });
 

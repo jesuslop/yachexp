@@ -1,0 +1,14 @@
+{
+  "activeProfileId": "mlcq1bxex4qfuryhle",
+  "schema_version": "1",
+  "profiles": {
+    "mlcq1bxex4qfuryhle": {
+      "name": "Default",
+      "pageTemplate": "# {title}\n\n- **Link:** [{link}]({link})\n- **Date:** {date}\n\n---\n\n",
+      "questionTemplate": "\n```ad-bubble\n{question}\n```",
+      "filenameTemplate": "ChatGPT-{title}",
+      "inlineMathTemplate": "${latex}$",
+      "displayMathTemplate": "$$\n{latex}\n$$"
+    }
+  }
+}
