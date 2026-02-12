@@ -27,13 +27,20 @@ body {
     padding: 16px;
     border-bottom: 1px solid #eee;
     display: flex;
-    align-items: center;
+    flex-direction: column;
     gap: 12px;
 }
 
+.sidebar-header-top {
+    display: grid;
+    grid-template-columns: 36px 1fr;
+    align-items: center;
+    column-gap: 12px;
+}
+
 .logo-area {
-    width: 32px;
-    height: 32px;
+    width: 36px;
+    height: 36px;
     flex-shrink: 0;
 }
 
@@ -43,12 +50,18 @@ body {
     object-fit: contain;
 }
 
-.sidebar-header h2 {
+.sidebar-title {
     margin: 0;
-    font-size: 16px;
+    font-size: 18px;
     font-weight: 600;
     color: #222;
-    flex: 1;
+    line-height: 1.15;
+}
+
+.sidebar-subtitle {
+    font-size: 14px;
+    font-weight: 500;
+    color: #666;
 }
 
 .sidebar-content {

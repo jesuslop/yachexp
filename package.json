@@ -7,7 +7,9 @@
     "deps:sync": "powershell -ExecutionPolicy Bypass -File scripts\\copy-deps.ps1"
   },
   "devDependencies": {
+    "jsonata": "2.1.0",
     "turndown": "7.1.2",
-    "turndown-plugin-gfm": "1.0.2"
+    "turndown-plugin-gfm": "1.0.2",
+    "yuppee": "1.0.0"
   }
 }

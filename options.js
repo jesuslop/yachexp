@@ -10,6 +10,8 @@ const displayMathInput = document.getElementById('displayMathTemplate');
 const statusSpan = document.getElementById('status');
 const formTitle = document.getElementById('formTitle');
 
+const settingsUpdateApi = globalThis.YachexpSettingsUpdate;
+
 // State
 let profiles = {};
 let selectedProfileId = null; // Visually selected in the list
@@ -25,30 +27,8 @@ document.addEventListener('DOMContentLoaded', loadData);
 
 function loadData() {
     browser.storage.local.get(null).then((items) => {
-        if (items.profiles) {
-            profiles = items.profiles;
-            activeProfileId = items.activeProfileId;
-        } else {
-            // Fallback if empty (shouldn't happen with background init)
-            // We can init defaults here just in case
-            const defaultId = uuid();
-            profiles = {
-                [defaultId]: {
-                    name: "Default",
-                    pageTemplate: "",
-                    questionTemplate: "",
-                    filenameTemplate: "" // etc
-                }
-            };
-            activeProfileId = defaultId;
-        }
-
-        // Initial selection: Select the active profile
-        // If activeProfileId is missing or invalid, pick first
-        if (!profiles[activeProfileId]) {
-            const ids = Object.keys(profiles);
-            if (ids.length > 0) activeProfileId = ids[0];
-        }
+		profiles = items.profiles;
+		activeProfileId = items.activeProfileId;
 
         selectedProfileId = activeProfileId;
         renderSidebar();
@@ -220,19 +200,13 @@ document.getElementById('btnSave').addEventListener('click', () => {
 // --- Export / Import Logic ---
 
 document.getElementById('btnExport').addEventListener('click', () => {
-    // 1. Get current version from manifest
-    const manifest = browser.runtime.getManifest();
-    const version = manifest.version;
-
-    // 2. Get all data (do not persist extension version)
     browser.storage.local.get(null).then((items) => {
-        // 3. Serialize and Download
         const json = JSON.stringify(items, null, 2);
         const blob = new Blob([json], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
 
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-        const outputFilename = `yachexp-settings-${version}-${timestamp}.json`;
+        const outputFilename = `yachexp-settings-${timestamp}.json`;
 
         const a = document.createElement('a');
         a.href = url;
@@ -253,27 +227,34 @@ document.getElementById('importFile').addEventListener('change', (e) => {
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
+        const backup = await browser.storage.local.get(null);
         try {
             const data = JSON.parse(event.target.result);
+            const { settings: normalized, resetReason } = await settingsUpdateApi.normalizeSettings(data);
+            if (resetReason) {
+                await restoreSettings(backup);
+                alert(`Imported settings were rejected because ${resetReason}. Previous settings were restored.`);
+                return;
+            }
 
             // Basic validation: check if profiles exist
-            if (!data.profiles) {
-                alert("Invalid settings file: missing 'profiles'.");
+            if (!normalized.profiles) {
+                await restoreSettings(backup);
+                alert("Invalid settings file: missing 'profiles'. Previous settings were restored.");
                 return;
             }
 
             if (confirm("This will overwrite current settings. Continue?")) {
-                browser.storage.local.clear().then(() => {
-                    browser.storage.local.set(data).then(() => {
-                        alert("Settings imported successfully!");
-                        window.location.reload();
-                    });
-                });
+                const current = await browser.storage.local.get(null);
+                await settingsUpdateApi.replaceStorage(normalized, current);
+                alert("Settings imported successfully!");
+                window.location.reload();
             }
         } catch (err) {
             console.error(err);
-            alert("Error parsing settings file: " + err.message);
+            await restoreSettings(backup);
+            alert("Error importing settings file: " + err.message + ". Previous settings were restored.");
         }
     };
     reader.readAsText(file);
@@ -293,4 +274,10 @@ function showStatus(msg) {
     setTimeout(() => {
         statusSpan.classList.remove('show');
     }, 2000);
+}
+
+async function restoreSettings(backup) {
+    if (!backup) return;
+    const current = await browser.storage.local.get(null);
+    await settingsUpdateApi.replaceStorage(backup, current);
 }

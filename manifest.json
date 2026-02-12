@@ -32,6 +32,10 @@
   ],
   "background": {
     "scripts": [
+      "lib/jsonata.js",
+      "lib/yuppee.js",
+      "storage-migrations.js",
+      "settings-update.js",
       "background.js"
     ]
   },

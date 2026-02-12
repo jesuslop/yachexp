@@ -1,36 +1,41 @@
-const DEFAULTS = {
-    pageTemplate: `# {title}\n\n- **Link:** [{link}]({link})\n- **Date:** {date}\n\n---\n\n`,
-    questionTemplate: `\n\n\`\`\`ad-bubble\n{question}\n\`\`\``,
-    filenameTemplate: `{title}`,
-    inlineMathTemplate: "${latex}$",
-    displayMathTemplate: "\n$$\n{latex}\n$$\n"
-};
+let storageInitPromise = null;
 
-function uuid() {
-    return Date.now().toString(36) + Math.random().toString(36).substr(2);
+async function initializeStorage() {
+  const current = await browser.storage.local.get(null);
+  const allowMissingSchema = Object.keys(current).length === 0;
+  const { settings, resetReason } = await globalThis.YachexpSettingsUpdate.normalizeSettings(
+    current,
+    { allowMissingSchema }
+  );
+
+  if (resetReason) {
+    console.warn(`Resetting storage to defaults: ${resetReason}`);
+  }
+
+  if (settings === current) {
+    return;
+  }
+
+  await globalThis.YachexpSettingsUpdate.replaceStorage(settings, current);
 }
 
-browser.runtime.onInstalled.addListener(() => {
-    browser.storage.local.clear().then(() => {
-        const defaultId = uuid();
-        const profiles = {
-            [defaultId]: {
-                name: "Default",
-                ...DEFAULTS
-            }
-        };
-        browser.storage.local.set({
-            profiles: profiles,
-            activeProfileId: defaultId
-        });
+function ensureStorageInitialized() {
+  if (!storageInitPromise) {
+    storageInitPromise = initializeStorage().catch((err) => {
+      console.error('Storage initialization failed:', err);
+      throw err;
     });
-});
+  }
+  return storageInitPromise;
+}
+
+ensureStorageInitialized();
 
 browser.action.onClicked.addListener((tab) => {
-    if (!tab || !tab.id) {
-        return;
-    }
-    browser.tabs.sendMessage(tab.id, { type: 'yachexp-export' }).catch(() => {
-        // Ignore errors when the active tab does not have the content script
-    });
+  if (!tab || !tab.id) {
+    return;
+  }
+  browser.tabs.sendMessage(tab.id, { type: 'yachexp-export' }).catch(() => {
+    // Ignore errors when the active tab does not have the content script
+  });
 });
