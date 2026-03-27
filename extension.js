@@ -58,6 +58,350 @@
     return location.href;
   }
 
+  function escapeHtml(text) {
+    return String(text)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function stripHtml(html) {
+    return String(html || '')
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<\/p>/gi, '\n\n')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\n{3,}/g, '\n\n')
+      .replace(/[ \t]+\n/g, '\n')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function textToHtml(text) {
+    return String(text || '')
+      .trim()
+      .split(/\n{2,}/)
+      .filter(Boolean)
+      .map(block => `<p>${escapeHtml(block).replace(/\n/g, '<br>')}</p>`)
+      .join('');
+  }
+
+  function getConversationId() {
+    const pathMatch = location.pathname.match(/\/c\/([0-9a-f-]+)/i);
+    if (pathMatch?.[1]) {
+      return pathMatch[1];
+    }
+
+    const canonicalHref = document
+      .querySelector('link[rel="canonical"]')
+      ?.getAttribute('href');
+    const canonicalMatch = canonicalHref?.match(/\/c\/([0-9a-f-]+)/i);
+    return canonicalMatch?.[1] || null;
+  }
+
+  function getClientBootstrapData() {
+    const raw = document.querySelector('#client-bootstrap')?.textContent;
+    if (!raw) {
+      return null;
+    }
+
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  }
+
+  function getPageWindow() {
+    try {
+      return window.wrappedJSObject || window;
+    } catch {
+      return window;
+    }
+  }
+
+  function isConversationPayload(value) {
+    return !!(
+      value &&
+      typeof value === 'object' &&
+      value.mapping &&
+      typeof value.mapping === 'object'
+    );
+  }
+
+  function findConversationPayload(root, maxNodes = 2000) {
+    if (!root || typeof root !== 'object') {
+      return null;
+    }
+
+    const queue = [root];
+    const seen = new WeakSet();
+    let visited = 0;
+
+    while (queue.length && visited < maxNodes) {
+      const current = queue.shift();
+      if (!current || typeof current !== 'object') {
+        continue;
+      }
+      if (seen.has(current)) {
+        continue;
+      }
+      seen.add(current);
+      visited += 1;
+
+      if (isConversationPayload(current)) {
+        return current;
+      }
+
+      if (Array.isArray(current)) {
+        current.forEach(item => {
+          if (item && typeof item === 'object') {
+            queue.push(item);
+          }
+        });
+        continue;
+      }
+
+      Object.values(current).forEach(value => {
+        if (value && typeof value === 'object') {
+          queue.push(value);
+        }
+      });
+    }
+
+    return null;
+  }
+
+  function getConversationPayloadFromGlobals() {
+    const pageWindow = getPageWindow();
+    const candidates = [
+      pageWindow.__REACT_QUERY_CACHE__,
+      pageWindow.__reactRouterContext,
+      pageWindow.__NEXT_DATA__,
+      pageWindow.__INITIAL_STATE__,
+      pageWindow.__REMIX_CONTEXT__
+    ];
+
+    for (const candidate of candidates) {
+      const found = findConversationPayload(candidate);
+      if (found) {
+        return found;
+      }
+    }
+
+    return null;
+  }
+
+  async function fetchConversationPayload() {
+    const conversationId = getConversationId();
+    if (!conversationId) {
+      return null;
+    }
+
+    const headers = {
+      Accept: 'application/json'
+    };
+    const accessToken = getClientBootstrapData()?.session?.accessToken;
+    if (accessToken) {
+      headers.Authorization = `Bearer ${accessToken}`;
+    }
+
+    try {
+      const response = await fetch(`/backend-api/conversation/${conversationId}`, {
+        credentials: 'include',
+        cache: 'no-store',
+        headers
+      });
+
+      if (!response.ok) {
+        return null;
+      }
+
+      const payload = await response.json();
+      return isConversationPayload(payload) ? payload : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function getMessageRole(message) {
+    return message?.author?.role || message?.role || null;
+  }
+
+  function extractPartText(part) {
+    if (typeof part === 'string') {
+      return part;
+    }
+
+    if (!part || typeof part !== 'object') {
+      return '';
+    }
+
+    if (typeof part.text === 'string') {
+      return part.text;
+    }
+
+    if (typeof part.content === 'string') {
+      return part.content;
+    }
+
+    if (Array.isArray(part.parts)) {
+      return part.parts.map(extractPartText).filter(Boolean).join('\n\n');
+    }
+
+    return '';
+  }
+
+  function extractMessageMarkdown(message) {
+    const content = message?.content;
+    if (!content || typeof content !== 'object') {
+      return '';
+    }
+
+    if (Array.isArray(content.parts)) {
+      return content.parts
+        .map(extractPartText)
+        .filter(Boolean)
+        .join('\n\n')
+        .trim();
+    }
+
+    if (typeof content.text === 'string') {
+      return content.text.trim();
+    }
+
+    if (typeof content.result === 'string') {
+      return content.result.trim();
+    }
+
+    return '';
+  }
+
+  function getOrderedConversationMessages(payload) {
+    if (!isConversationPayload(payload)) {
+      return [];
+    }
+
+    const mapping = payload.mapping;
+    const lineage = [];
+    const seen = new Set();
+    let currentId = payload.current_node;
+
+    while (currentId && mapping[currentId] && !seen.has(currentId)) {
+      const node = mapping[currentId];
+      lineage.push(node);
+      seen.add(currentId);
+      currentId = node.parent;
+    }
+
+    const nodes = lineage.length ? lineage.reverse() : Object.values(mapping);
+
+    return nodes
+      .map(node => node?.message)
+      .filter(Boolean);
+  }
+
+  function buildQAPairsFromConversationPayload(payload) {
+    const messages = getOrderedConversationMessages(payload);
+    const pairs = [];
+    let pendingUser = null;
+
+    for (const message of messages) {
+      const role = getMessageRole(message);
+      const markdown = extractMessageMarkdown(message);
+      const isHidden = !!message?.metadata?.is_visually_hidden_from_conversation;
+
+      if (!role || !markdown || isHidden) {
+        continue;
+      }
+
+      if (role === 'user') {
+        pendingUser = markdown;
+        continue;
+      }
+
+      if (role === 'assistant' && pendingUser) {
+        pairs.push({
+          questionMarkdown: pendingUser,
+          answerMarkdown: markdown,
+          previewText: pendingUser
+        });
+        pendingUser = null;
+      }
+    }
+
+    return pairs;
+  }
+
+  function getPairQuestionMarkdown(pair, inlineMathTemplate, displayMathTemplate) {
+    if (typeof pair.questionMarkdown === 'string') {
+      return pair.questionMarkdown.trim();
+    }
+
+    if (typeof pair.questionHtml === 'string') {
+      return htmlToMarkdown(
+        pair.questionHtml.replace(/\n/g, '<br>'),
+        inlineMathTemplate,
+        displayMathTemplate
+      );
+    }
+
+    if (pair.questionArticle) {
+      const questionHTML = cleanArticle(pair.questionArticle).outerHTML;
+      return htmlToMarkdown(
+        questionHTML.replace(/\n/g, '<br>'),
+        inlineMathTemplate,
+        displayMathTemplate
+      );
+    }
+
+    return '';
+  }
+
+  function getPairAnswerMarkdown(pair, inlineMathTemplate, displayMathTemplate) {
+    if (typeof pair.answerMarkdown === 'string') {
+      return pair.answerMarkdown.trim();
+    }
+
+    if (typeof pair.answerHtml === 'string') {
+      return htmlToMarkdown(
+        pair.answerHtml,
+        inlineMathTemplate,
+        displayMathTemplate
+      );
+    }
+
+    if (pair.answerArticle) {
+      const answerHTML = cleanArticle(pair.answerArticle).outerHTML;
+      return htmlToMarkdown(answerHTML, inlineMathTemplate, displayMathTemplate);
+    }
+
+    return '';
+  }
+
+  function getPairPreviewText(pair) {
+    if (typeof pair.previewText === 'string' && pair.previewText.trim()) {
+      return pair.previewText.trim();
+    }
+
+    if (typeof pair.questionMarkdown === 'string') {
+      return pair.questionMarkdown.trim();
+    }
+
+    if (typeof pair.questionHtml === 'string') {
+      return stripHtml(pair.questionHtml);
+    }
+
+    if (pair.questionArticle) {
+      const cleanClone = pair.questionArticle.cloneNode(true);
+      cleanClone.querySelectorAll('.sr-only').forEach(el => el.remove());
+      return cleanClone.innerText.trim();
+    }
+
+    return '';
+  }
+
 
   /********************************************************************
    * (1/3) Preprocess HTML
@@ -232,16 +576,20 @@
 
       // --- CONVERSATION LOOP ---
       pairs.forEach((pair, idx) => {
-        const questionHTML = cleanArticle(pair.questionArticle).outerHTML;
-        const answerHTML = cleanArticle(pair.answerArticle).outerHTML;
-
-        // Preserve paragraphs in question html text by converting newlines into BRs
-        const questionMd = htmlToMarkdown(questionHTML.replace(/\n/g, '<br>'), inlineMathTemplate, displayMathTemplate);
+        const questionMd = getPairQuestionMarkdown(
+          pair,
+          inlineMathTemplate,
+          displayMathTemplate
+        );
 
         // --- QUESTION TEMPLATE PROCESSING ---
         const questionBlock = questionTemplate.replace(/{question}/g, questionMd);
 
-        const answerMd = htmlToMarkdown(answerHTML, inlineMathTemplate, displayMathTemplate);
+        const answerMd = getPairAnswerMarkdown(
+          pair,
+          inlineMathTemplate,
+          displayMathTemplate
+        );
 
         markdown += questionBlock + '\n\n';
         markdown += answerMd + '\n\n';
@@ -277,7 +625,7 @@
       .filter(Boolean);
   }
 
-  function buildQAPairs() {
+  function buildQAPairsFromDOM() {
     const messages = getMessageArticles();
     const pairs = [];
     let pendingUser = null;
@@ -295,6 +643,22 @@
     }
 
     return pairs;
+  }
+
+  async function buildQAPairs() {
+    const cachedPayload = getConversationPayloadFromGlobals();
+    const cachedPairs = buildQAPairsFromConversationPayload(cachedPayload);
+    if (cachedPairs.length) {
+      return cachedPairs;
+    }
+
+    const fetchedPayload = await fetchConversationPayload();
+    const fetchedPairs = buildQAPairsFromConversationPayload(fetchedPayload);
+    if (fetchedPairs.length) {
+      return fetchedPairs;
+    }
+
+    return buildQAPairsFromDOM();
   }
 
   /********************************************************************
@@ -391,10 +755,7 @@
       cb.style.marginTop = '4px';
 
       const text = document.createElement('span');
-      // Clone and remove sr-only elements before getting text
-      const cleanClone = pair.questionArticle.cloneNode(true);
-      cleanClone.querySelectorAll('.sr-only').forEach(el => el.remove());
-      text.textContent = truncate(cleanClone.innerText);
+      text.textContent = truncate(getPairPreviewText(pair));
 
       row.append(cb, text);
       list.appendChild(row);
@@ -449,8 +810,8 @@
    * Export flow
    ********************************************************************/
 
-  function startExport() {
-    const pairs = buildQAPairs();
+  async function startExport() {
+    const pairs = await buildQAPairs();
     if (!pairs.length) {
       alert('No exportable conversation found.');
       return;
@@ -459,7 +820,10 @@
   }
 
   function handleExportRequest() {
-    startExport();
+    startExport().catch(error => {
+      console.error('yachexp export failed', error);
+      alert('No exportable conversation found.');
+    });
   }
 
   /********************************************************************
@@ -472,5 +836,16 @@
     }
     handleExportRequest();
   });
+
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = {
+      buildQAPairsFromConversationPayload,
+      extractMessageMarkdown,
+      getOrderedConversationMessages,
+      isConversationPayload,
+      getConversationId,
+      textToHtml
+    };
+  }
 
 })();

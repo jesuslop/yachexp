@@ -59,7 +59,7 @@
       const state = { ...data };
       delete state[SCHEMA_VERSION_KEY];
 
-      const result = migrator({ ...state, version: currentVersion });
+      const result = await migrator({ ...state, version: currentVersion });
       if (!result || typeof result !== 'object') {
         throw new Error('Migration did not return a result.');
       }

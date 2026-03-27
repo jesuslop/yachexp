@@ -28,11 +28,11 @@
     );
   }
 
-  function runJsonata(expression, state) {
+  async function runJsonata(expression, state) {
     if (typeof jsonata !== 'function') {
       throw new Error('jsonata is not available. Did you sync lib/jsonata.js?');
     }
-    return jsonata(expression).evaluate(state);
+    return await jsonata(expression).evaluate(state);
   }
 
   function buildStorageMigrator(yuppeeApi) {
@@ -46,11 +46,11 @@
       name: step.name || `storage-v${step.from}-to-v${step.to}`,
       from: step.from,
       to: step.to,
-      migrate: (input) => {
+      migrate: async (input) => {
         const { version, ...payload } = input;
         let output = payload;
         if (step.jsonata) {
-          output = runJsonata(step.jsonata, output);
+          output = await runJsonata(step.jsonata, output);
         }
         if (typeof step.hook === 'function') {
           output = step.hook(output);
@@ -59,10 +59,43 @@
       }
     }));
 
-    return yuppeeApi.createMigrator({
-      migrations,
-      init: () => ({})
-    });
+    const latestTarget = migrations.length
+      ? Math.max(...migrations.map((migration) => migration.to))
+      : undefined;
+
+    return async (input = { version: 1 }) => {
+      const currentVersion = input.version;
+      const target = latestTarget ?? currentVersion;
+      if (typeof currentVersion !== 'number') {
+        throw new Error(
+          `Expected object with version number but version was ${currentVersion}`
+        );
+      }
+      if (currentVersion > target) {
+        throw new Error(
+          `Cannot process state with version ${currentVersion}, highest known version is ${target}`
+        );
+      }
+      if (currentVersion === target) {
+        return { ...input, version: target };
+      }
+
+      let state = { ...input };
+      let cursor = currentVersion;
+      while (cursor < target) {
+        const candidates = migrations
+          .filter((migration) => migration.from === cursor && migration.to > cursor)
+          .sort((a, b) => (a.to > b.to ? -1 : 1));
+        const step = candidates.at(0);
+        if (!step) {
+          throw new Error(`Migration from v${cursor} to v${cursor + 1} missing`);
+        }
+        const migrated = await step.migrate(state);
+        state = { ...migrated, version: step.to };
+        cursor = step.to;
+      }
+      return state;
+    };
   }
 
   window.YachexpStorageMigrations = {

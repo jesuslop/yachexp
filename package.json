@@ -4,7 +4,11 @@
   "version": "0.0.0",
   "description": "Local tooling for dependency pinning and vendoring.",
   "scripts": {
-    "deps:sync": "powershell -ExecutionPolicy Bypass -File scripts\\copy-deps.ps1"
+    "build:source-review": "powershell -ExecutionPolicy Bypass -File scripts\\source-package.ps1",
+    "build:xpi": "powershell -ExecutionPolicy Bypass -File scripts\\package.ps1",
+    "deps:sync": "powershell -ExecutionPolicy Bypass -File scripts\\copy-deps.ps1",
+    "sign:unlisted": "powershell -ExecutionPolicy Bypass -File scripts\\release.ps1",
+    "test": "node --test"
   },
   "devDependencies": {
     "jsonata": "2.1.0",
