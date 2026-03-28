@@ -80,3 +80,95 @@ test("extractMessageMarkdown supports string and object parts", () => {
     "first block\n\nsecond block\n\nthird block\n\nnested fourth"
   );
 });
+
+test("normalizeMarkdownMathDelimiters rewrites configured math delimiters without touching code", () => {
+  const extension = loadExtensionModule();
+
+  const markdown = [
+    "Inline math: \\(e=mc^2\\)",
+    "",
+    "\\[",
+    "U \\mapsto \\Omega^k(U)",
+    "\\]",
+    "",
+    "`\\(leave me alone\\)`",
+    "",
+    "```tex",
+    "\\[",
+    "also_leave_me_alone",
+    "\\]",
+    "```"
+  ].join("\n");
+
+  const normalized = extension.normalizeMarkdownMathDelimiters(
+    markdown,
+    "${latex}$",
+    "$$\n{latex}\n$$"
+  );
+
+  assert.equal(
+    normalized,
+    [
+      "Inline math: $e=mc^2$",
+      "",
+      "$$",
+      "U \\mapsto \\Omega^k(U)",
+      "$$",
+      "",
+      "`\\(leave me alone\\)`",
+      "",
+      "```tex",
+      "\\[",
+      "also_leave_me_alone",
+      "\\]",
+      "```"
+    ].join("\n")
+  );
+});
+
+test("normalizeMarkdownEntities converts ChatGPT entity markers to their display text", () => {
+  const extension = loadExtensionModule();
+
+  assert.equal(
+    extension.normalizeMarkdownEntities(
+      '**entity["scientific_concept","Riemann curvature tensor","differential geometry"]**'
+    ),
+    "**Riemann curvature tensor**"
+  );
+});
+
+test("pair markdown extraction applies active math templates to payload markdown", () => {
+  const extension = loadExtensionModule();
+
+  assert.equal(
+    extension.getPairQuestionMarkdown(
+      {
+        questionMarkdown: "Question with \\(a+b\\) inline math."
+      },
+      "@@{latex}@@",
+      "<<\n{latex}\n>>"
+    ),
+    "Question with @@a+b@@ inline math."
+  );
+
+  assert.equal(
+    extension.getPairAnswerMarkdown(
+      {
+        answerMarkdown: [
+          "Before",
+          "",
+          '**entity["scientific_concept","Riemann curvature tensor","differential geometry"]**',
+          "",
+          "\\[",
+          "A = B",
+          "\\]",
+          "",
+          "After"
+        ].join("\n")
+      },
+      "@@{latex}@@",
+      "<<\n{latex}\n>>"
+    ),
+    "Before\n\n**Riemann curvature tensor**\n\n<<\nA = B\n>>\n\nAfter"
+  );
+});

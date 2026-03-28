@@ -87,6 +87,75 @@
       .join('');
   }
 
+  function applyMathTemplate(template, latex) {
+    return String(template || '').replace(/{latex}/g, latex);
+  }
+
+  function protectMarkdownCodeSpans(markdown) {
+    const placeholders = [];
+    let protectedMarkdown = String(markdown || '');
+
+    const storePlaceholder = match => {
+      const token = `__YACHEXP_CODE_${placeholders.length}__`;
+      placeholders.push(match);
+      return token;
+    };
+
+    protectedMarkdown = protectedMarkdown.replace(
+      /(?:^|\n)(```|~~~)[^\n]*\n[\s\S]*?\n\1(?=\n|$)/g,
+      storePlaceholder
+    );
+
+    protectedMarkdown = protectedMarkdown.replace(
+      /`[^`\n]+`/g,
+      storePlaceholder
+    );
+
+    return { placeholders, protectedMarkdown };
+  }
+
+  function restoreMarkdownCodeSpans(markdown, placeholders) {
+    return placeholders.reduce(
+      (current, value, index) => current.replace(`__YACHEXP_CODE_${index}__`, value),
+      markdown
+    );
+  }
+
+  function extractEntityLabel(entityPayload) {
+    try {
+      const parsed = JSON.parse(entityPayload);
+      if (Array.isArray(parsed) && typeof parsed[1] === 'string' && parsed[1].trim()) {
+        return parsed[1].trim();
+      }
+    } catch {
+      // Fall through to raw payload cleanup below.
+    }
+
+    const rawParts = String(entityPayload || '')
+      .split(',')
+      .map(part => part.replace(/^[\s"'[\]]+|[\s"'[\]]+$/g, ''))
+      .filter(Boolean);
+
+    return rawParts[1] || '';
+  }
+
+  function normalizeMarkdownEntities(markdown) {
+    return String(markdown || '').replace(
+      /entity([\s\S]*?)/g,
+      (_, entityPayload) => extractEntityLabel(entityPayload)
+    );
+  }
+
+  function normalizeMarkdownMathDelimiters(markdown, inlineMathTemplate, displayMathTemplate) {
+    const { placeholders, protectedMarkdown } = protectMarkdownCodeSpans(markdown);
+
+    const normalized = normalizeMarkdownEntities(protectedMarkdown)
+      .replace(/\\\[\s*([\s\S]*?)\s*\\\]/g, (_, latex) => applyMathTemplate(displayMathTemplate, latex.trim()))
+      .replace(/\\\(([\s\S]*?)\\\)/g, (_, latex) => applyMathTemplate(inlineMathTemplate, latex.trim()));
+
+    return restoreMarkdownCodeSpans(normalized, placeholders);
+  }
+
   function getConversationId() {
     const pathMatch = location.pathname.match(/\/c\/([0-9a-f-]+)/i);
     if (pathMatch?.[1]) {
@@ -336,7 +405,11 @@
 
   function getPairQuestionMarkdown(pair, inlineMathTemplate, displayMathTemplate) {
     if (typeof pair.questionMarkdown === 'string') {
-      return pair.questionMarkdown.trim();
+      return normalizeMarkdownMathDelimiters(
+        pair.questionMarkdown.trim(),
+        inlineMathTemplate,
+        displayMathTemplate
+      );
     }
 
     if (typeof pair.questionHtml === 'string') {
@@ -361,7 +434,11 @@
 
   function getPairAnswerMarkdown(pair, inlineMathTemplate, displayMathTemplate) {
     if (typeof pair.answerMarkdown === 'string') {
-      return pair.answerMarkdown.trim();
+      return normalizeMarkdownMathDelimiters(
+        pair.answerMarkdown.trim(),
+        inlineMathTemplate,
+        displayMathTemplate
+      );
     }
 
     if (typeof pair.answerHtml === 'string') {
@@ -420,9 +497,10 @@
     // 3. Replace MathML with LaTeX notation
     doc.querySelectorAll('math').forEach(math => {
       const annotation = math.querySelector('annotation[encoding*="tex"], annotation[encoding*="TeX"]');
+      const replacementTarget = math.closest('.katex-display') || math.closest('.katex') || math;
 
       if (!annotation || !annotation.textContent.trim()) {
-        math.remove();
+        replacementTarget.remove();
         return;
       }
 
@@ -432,13 +510,13 @@
       const template = display ? displayMathTemplate : inlineMathTemplate;
 
       const fragment = doc.createDocumentFragment();
-      const templateWithLatex = template.replace('{latex}', latex);
+      const templateWithLatex = applyMathTemplate(template, latex);
       const lines = templateWithLatex.split('\n');
       lines.forEach((line, index) => {
         if (index > 0) fragment.appendChild(doc.createElement('br'));
         fragment.appendChild(doc.createTextNode(line));
       });
-      math.replaceWith(fragment);
+      replacementTarget.replaceWith(fragment);
     });
 
     return doc.body.innerHTML;
@@ -841,9 +919,13 @@
     module.exports = {
       buildQAPairsFromConversationPayload,
       extractMessageMarkdown,
+      getPairAnswerMarkdown,
+      getPairQuestionMarkdown,
       getOrderedConversationMessages,
       isConversationPayload,
       getConversationId,
+      normalizeMarkdownEntities,
+      normalizeMarkdownMathDelimiters,
       textToHtml
     };
   }
