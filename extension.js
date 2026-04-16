@@ -140,10 +140,14 @@
   }
 
   function normalizeMarkdownEntities(markdown) {
-    return String(markdown || '').replace(
-      /entity([\s\S]*?)/g,
-      (_, entityPayload) => extractEntityLabel(entityPayload)
-    );
+    return String(markdown || '')
+      .replace(/(?:\n\s*)?image_group[\s\S]*?(?:\s*\n)?/g, '\n\n')
+      .replace(
+        /entity([\s\S]*?)/g,
+        (_, entityPayload) => extractEntityLabel(entityPayload)
+      )
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
   }
 
   function normalizeMarkdownMathDelimiters(markdown, inlineMathTemplate, displayMathTemplate) {
@@ -162,11 +166,28 @@
       return pathMatch[1];
     }
 
+    const search = typeof location?.search === 'string' ? location.search : '';
+    const searchParams = new URLSearchParams(search);
+    const searchParamId = searchParams.get('conversationId')
+      || searchParams.get('conversation_id')
+      || searchParams.get('cid');
+    if (searchParamId) {
+      return searchParamId;
+    }
+
     const canonicalHref = document
       .querySelector('link[rel="canonical"]')
       ?.getAttribute('href');
     const canonicalMatch = canonicalHref?.match(/\/c\/([0-9a-f-]+)/i);
-    return canonicalMatch?.[1] || null;
+    if (canonicalMatch?.[1]) {
+      return canonicalMatch[1];
+    }
+
+    const ogUrl = document
+      .querySelector('meta[property="og:url"]')
+      ?.getAttribute('content');
+    const ogMatch = ogUrl?.match(/\/c\/([0-9a-f-]+)/i);
+    return ogMatch?.[1] || null;
   }
 
   function getClientBootstrapData() {
@@ -190,16 +211,29 @@
     }
   }
 
-  function isConversationPayload(value) {
-    return !!(
-      value &&
-      typeof value === 'object' &&
-      value.mapping &&
-      typeof value.mapping === 'object'
-    );
+  function tryGetValue(getter, fallback = null) {
+    try {
+      const value = getter();
+      return value === undefined ? fallback : value;
+    } catch {
+      return fallback;
+    }
   }
 
-  function findConversationPayload(root, maxNodes = 2000) {
+  function isConversationPayload(value) {
+    try {
+      return !!(
+        value &&
+        typeof value === 'object' &&
+        value.mapping &&
+        typeof value.mapping === 'object'
+      );
+    } catch {
+      return false;
+    }
+  }
+
+  function findConversationPayload(root, maxNodes = 5000) {
     if (!root || typeof root !== 'object') {
       return null;
     }
@@ -232,7 +266,8 @@
         continue;
       }
 
-      Object.values(current).forEach(value => {
+      const values = tryGetValue(() => Object.values(current), []);
+      values.forEach(value => {
         if (value && typeof value === 'object') {
           queue.push(value);
         }
@@ -243,14 +278,32 @@
   }
 
   function getConversationPayloadFromGlobals() {
+    const roots = [window];
     const pageWindow = getPageWindow();
-    const candidates = [
-      pageWindow.__REACT_QUERY_CACHE__,
-      pageWindow.__reactRouterContext,
-      pageWindow.__NEXT_DATA__,
-      pageWindow.__INITIAL_STATE__,
-      pageWindow.__REMIX_CONTEXT__
-    ];
+    if (pageWindow && pageWindow !== window) {
+      roots.unshift(pageWindow);
+    }
+
+    const candidates = [getClientBootstrapData()];
+
+    roots.forEach(root => {
+      const reactRouterContext = tryGetValue(() => root.__reactRouterContext);
+      const reactRouterDataRouter = tryGetValue(() => root.__reactRouterDataRouter);
+
+      candidates.push(
+        tryGetValue(() => root.__REACT_QUERY_CACHE__),
+        reactRouterContext,
+        tryGetValue(() => reactRouterContext?.state),
+        tryGetValue(() => reactRouterContext?.state?.loaderData),
+        reactRouterDataRouter,
+        tryGetValue(() => reactRouterDataRouter?.state),
+        tryGetValue(() => reactRouterDataRouter?.state?.loaderData),
+        tryGetValue(() => reactRouterDataRouter?.state?.matches),
+        tryGetValue(() => root.__NEXT_DATA__),
+        tryGetValue(() => root.__INITIAL_STATE__),
+        tryGetValue(() => root.__REMIX_CONTEXT__)
+      );
+    });
 
     for (const candidate of candidates) {
       const found = findConversationPayload(candidate);
@@ -311,8 +364,29 @@
       return part.text;
     }
 
+    if (Array.isArray(part.text)) {
+      return part.text.map(extractPartText).filter(Boolean).join('\n\n');
+    }
+
+    if (typeof part.summary === 'string') {
+      const detail = typeof part.content === 'string' ? part.content : '';
+      return [part.summary, detail].filter(Boolean).join(': ');
+    }
+
     if (typeof part.content === 'string') {
       return part.content;
+    }
+
+    if (typeof part.result === 'string') {
+      return part.result;
+    }
+
+    if (typeof part.output === 'string') {
+      return part.output;
+    }
+
+    if (Array.isArray(part.thoughts)) {
+      return part.thoughts.map(extractPartText).filter(Boolean).join('\n\n');
     }
 
     if (Array.isArray(part.parts)) {
@@ -340,8 +414,32 @@
       return content.text.trim();
     }
 
+    if (Array.isArray(content.text)) {
+      return content.text
+        .map(extractPartText)
+        .filter(Boolean)
+        .join('\n\n')
+        .trim();
+    }
+
     if (typeof content.result === 'string') {
       return content.result.trim();
+    }
+
+    if (typeof content.content === 'string') {
+      return content.content.trim();
+    }
+
+    if (typeof content.output === 'string') {
+      return content.output.trim();
+    }
+
+    if (Array.isArray(content.thoughts)) {
+      return content.thoughts
+        .map(extractPartText)
+        .filter(Boolean)
+        .join('\n\n')
+        .trim();
     }
 
     return '';
@@ -352,22 +450,54 @@
       return [];
     }
 
-    const mapping = payload.mapping;
-    const lineage = [];
-    const seen = new Set();
-    let currentId = payload.current_node;
-
-    while (currentId && mapping[currentId] && !seen.has(currentId)) {
-      const node = mapping[currentId];
-      lineage.push(node);
-      seen.add(currentId);
-      currentId = node.parent;
+    const mapping = tryGetValue(() => payload.mapping, null);
+    if (!mapping || typeof mapping !== 'object') {
+      return [];
     }
 
-    const nodes = lineage.length ? lineage.reverse() : Object.values(mapping);
+    const linearConversation = tryGetValue(() => payload.linear_conversation, null);
+    if (Array.isArray(linearConversation) && linearConversation.length) {
+      return linearConversation
+        .map(entry => {
+          if (!entry) {
+            return null;
+          }
+
+          if (entry.message) {
+            return entry.message;
+          }
+
+          if (typeof entry === 'string') {
+            return mapping[entry]?.message || null;
+          }
+
+          if (typeof entry.id === 'string') {
+            return mapping[entry.id]?.message || null;
+          }
+
+          return null;
+        })
+        .filter(Boolean);
+    }
+
+    const lineage = [];
+    const seen = new Set();
+    let currentId = tryGetValue(() => payload.current_node, null);
+
+    while (currentId && tryGetValue(() => mapping[currentId], null) && !seen.has(currentId)) {
+      const node = tryGetValue(() => mapping[currentId], null);
+      if (!node) {
+        break;
+      }
+      lineage.push(node);
+      seen.add(currentId);
+      currentId = tryGetValue(() => node.parent, null);
+    }
+
+    const nodes = lineage.length ? lineage.reverse() : tryGetValue(() => Object.values(mapping), []);
 
     return nodes
-      .map(node => node?.message)
+      .map(node => tryGetValue(() => node?.message, null))
       .filter(Boolean);
   }
 
@@ -377,9 +507,9 @@
     let pendingUser = null;
 
     for (const message of messages) {
-      const role = getMessageRole(message);
-      const markdown = extractMessageMarkdown(message);
-      const isHidden = !!message?.metadata?.is_visually_hidden_from_conversation;
+      const role = tryGetValue(() => getMessageRole(message), null);
+      const markdown = tryGetValue(() => extractMessageMarkdown(message), '');
+      const isHidden = !!tryGetValue(() => message?.metadata?.is_visually_hidden_from_conversation, false);
 
       if (!role || !markdown || isHidden) {
         continue;
@@ -493,6 +623,16 @@
 
     // 2. Remove KaTeX HTML rendering (visual junk)
     doc.querySelectorAll('span.katex-html').forEach(el => el.remove());
+
+    // 2b. Remove image carousel/search-image blocks that should not appear in Markdown exports.
+    doc.querySelectorAll('[class*="group/search-image"]').forEach(el => {
+      const card = el.closest('div[style*="aspect-ratio"]') || el;
+      card.remove();
+    });
+    doc.querySelectorAll('button[aria-label^="Open image details for "]').forEach(el => {
+      const card = el.closest('div[style*="aspect-ratio"]') || el;
+      card.remove();
+    });
 
     // 3. Replace MathML with LaTeX notation
     doc.querySelectorAll('math').forEach(math => {
@@ -689,16 +829,102 @@
    * Message extraction
    ********************************************************************/
 
-  function getMessageArticles() {
-    return Array.from(document.querySelectorAll('article'))
-      .map(article => {
-        const roleEl = article.querySelector('[data-message-author-role]');
-        if (!roleEl) return null;
+  function getConversationDomDiagnostics() {
+    return {
+      threadPresent: !!document.querySelector('#thread'),
+      turnSectionCount: document.querySelectorAll('#thread section[data-turn]').length,
+      turnSectionIdCount: document.querySelectorAll('#thread section[data-turn-id][data-turn]').length,
+      roleNodeCount: document.querySelectorAll('#thread [data-message-author-role]').length,
+      userRoleNodeCount: document.querySelectorAll('#thread [data-message-author-role="user"]').length,
+      assistantRoleNodeCount: document.querySelectorAll('#thread [data-message-author-role="assistant"]').length
+    };
+  }
 
-        return {
-          role: roleEl.getAttribute('data-message-author-role'),
-          article
+  function extractTurnContentNode(turnSection, role) {
+    if (!turnSection || !role) {
+      return null;
+    }
+
+    const roleNode = turnSection.querySelector(`[data-message-author-role="${role}"]`);
+    const scopedRoot = roleNode || turnSection;
+
+    return scopedRoot.querySelector(
+      '.whitespace-pre-wrap, .markdown, .prose, [data-testid="user-message"], [data-testid="assistant-turn"], p, pre, ul, ol, table'
+    ) || roleNode || null;
+  }
+
+  function buildQAPairsFromTurnSections() {
+    const turns = Array.from(
+      document.querySelectorAll('#thread section[data-turn-id][data-turn], #thread section[data-turn]')
+    );
+    const pairs = [];
+    let pendingUser = null;
+
+    for (const turn of turns) {
+      const role = turn.getAttribute('data-turn');
+      if (role === 'user') {
+        const userNode = extractTurnContentNode(turn, 'user');
+        if (!userNode) {
+          continue;
+        }
+
+        const questionHtml = userNode.outerHTML || userNode.innerHTML || '';
+        const previewText = userNode.innerText?.trim() || userNode.textContent?.trim() || '';
+        if (!questionHtml && !previewText) {
+          continue;
+        }
+
+        pendingUser = {
+          html: questionHtml,
+          previewText
         };
+        continue;
+      }
+
+      if (role === 'assistant' && pendingUser) {
+        const assistantNode = extractTurnContentNode(turn, 'assistant');
+        if (!assistantNode) {
+          continue;
+        }
+
+        const answerHtml = assistantNode.outerHTML || assistantNode.innerHTML || '';
+        if (!answerHtml.trim()) {
+          continue;
+        }
+
+        pairs.push({
+          questionHtml: pendingUser.html,
+          answerHtml,
+          previewText: pendingUser.previewText
+        });
+        pendingUser = null;
+      }
+    }
+
+    return pairs;
+  }
+
+  function getMessageArticles() {
+    const seenContainers = new Set();
+
+    return Array.from(document.querySelectorAll('[data-message-author-role]'))
+      .map(roleEl => {
+        const role = roleEl.getAttribute('data-message-author-role');
+        if (role !== 'user' && role !== 'assistant') {
+          return null;
+        }
+
+        if (roleEl.parentElement?.closest('[data-message-author-role]')) {
+          return null;
+        }
+
+        const article = roleEl.closest('article') || roleEl;
+        if (seenContainers.has(article)) {
+          return null;
+        }
+        seenContainers.add(article);
+
+        return { role, article };
       })
       .filter(Boolean);
   }
@@ -724,19 +950,57 @@
   }
 
   async function buildQAPairs() {
-    const cachedPayload = getConversationPayloadFromGlobals();
-    const cachedPairs = buildQAPairsFromConversationPayload(cachedPayload);
-    if (cachedPairs.length) {
-      return cachedPairs;
+    let cachedPayload = null;
+    try {
+      cachedPayload = getConversationPayloadFromGlobals();
+      const cachedPairs = buildQAPairsFromConversationPayload(cachedPayload);
+      if (cachedPairs.length) {
+        return cachedPairs;
+      }
+    } catch (error) {
+      console.warn('yachexp: cached payload extraction failed', error);
     }
 
-    const fetchedPayload = await fetchConversationPayload();
-    const fetchedPairs = buildQAPairsFromConversationPayload(fetchedPayload);
-    if (fetchedPairs.length) {
-      return fetchedPairs;
+    let fetchedPayload = null;
+    try {
+      fetchedPayload = await fetchConversationPayload();
+      const fetchedPairs = buildQAPairsFromConversationPayload(fetchedPayload);
+      if (fetchedPairs.length) {
+        return fetchedPairs;
+      }
+    } catch (error) {
+      console.warn('yachexp: fetched payload extraction failed', error);
     }
 
-    return buildQAPairsFromDOM();
+    try {
+      const turnPairs = buildQAPairsFromTurnSections();
+      if (turnPairs.length) {
+        return turnPairs;
+      }
+    } catch (error) {
+      console.warn('yachexp: turn section extraction failed', error);
+    }
+
+    try {
+      const domPairs = buildQAPairsFromDOM();
+      if (domPairs.length) {
+        return domPairs;
+      }
+    } catch (error) {
+      console.warn('yachexp: DOM extraction failed', error);
+    }
+
+    console.warn('yachexp: no conversation pairs found', {
+      diagnostics: getConversationDomDiagnostics(),
+      location: {
+        href: location.href,
+        pathname: location.pathname
+      },
+      payloadFound: !!cachedPayload,
+      fetchedPayloadFound: !!fetchedPayload
+    });
+
+    return [];
   }
 
   /********************************************************************

@@ -61,6 +61,50 @@ test("buildQAPairsFromConversationPayload pairs user and assistant mapping messa
   assert.equal(pairs[0].previewText, "markdown prose\nwith multiple lines");
 });
 
+test("buildQAPairsFromConversationPayload respects linear_conversation ordering", () => {
+  const extension = loadExtensionModule();
+  const payload = {
+    mapping: {
+      "assistant-1": {
+        id: "assistant-1",
+        parent: "user-1",
+        message: {
+          author: { role: "assistant" },
+          content: {
+            content_type: "multimodal_text",
+            parts: [
+              {
+                content_type: "text",
+                text: ["Answer block one", "Answer block two"]
+              }
+            ]
+          }
+        }
+      },
+      "user-1": {
+        id: "user-1",
+        parent: "root",
+        message: {
+          author: { role: "user" },
+          content: {
+            parts: ["Question body"]
+          }
+        }
+      }
+    },
+    linear_conversation: [
+      { id: "user-1" },
+      { id: "assistant-1" }
+    ]
+  };
+
+  const pairs = extension.buildQAPairsFromConversationPayload(payload);
+
+  assert.equal(pairs.length, 1);
+  assert.equal(pairs[0].questionMarkdown, "Question body");
+  assert.equal(pairs[0].answerMarkdown, "Answer block one\n\nAnswer block two");
+});
+
 test("extractMessageMarkdown supports string and object parts", () => {
   const extension = loadExtensionModule();
 
@@ -78,6 +122,32 @@ test("extractMessageMarkdown supports string and object parts", () => {
   assert.equal(
     markdown,
     "first block\n\nsecond block\n\nthird block\n\nnested fourth"
+  );
+});
+
+test("extractMessageMarkdown supports multimodal text arrays", () => {
+  const extension = loadExtensionModule();
+
+  const markdown = extension.extractMessageMarkdown({
+    content: {
+      content_type: "multimodal_text",
+      parts: [
+        {
+          content_type: "text",
+          text: ["first multimodal block", "second multimodal block"]
+        },
+        {
+          thoughts: [
+            { summary: "Reasoning", content: "trimmed summary" }
+          ]
+        }
+      ]
+    }
+  });
+
+  assert.equal(
+    markdown,
+    "first multimodal block\n\nsecond multimodal block\n\nReasoning: trimmed summary"
   );
 });
 
@@ -137,6 +207,23 @@ test("normalizeMarkdownEntities converts ChatGPT entity markers to their display
   );
 });
 
+test("normalizeMarkdownEntities removes ChatGPT image group markers", () => {
+  const extension = loadExtensionModule();
+
+  assert.equal(
+    extension.normalizeMarkdownEntities(
+      [
+        "Before",
+        "",
+        'image_group{"aspect_ratio":"1:1","query":["foo"],"num_per_query":1}',
+        "",
+        "After"
+      ].join("\n")
+    ),
+    "Before\n\nAfter"
+  );
+});
+
 test("pair markdown extraction applies active math templates to payload markdown", () => {
   const extension = loadExtensionModule();
 
@@ -171,4 +258,28 @@ test("pair markdown extraction applies active math templates to payload markdown
     ),
     "Before\n\n**Riemann curvature tensor**\n\n<<\nA = B\n>>\n\nAfter"
   );
+});
+
+test("getConversationId reads conversation IDs from query parameters", () => {
+  const previousLocation = globalThis.location;
+  const previousDocument = globalThis.document;
+
+  globalThis.location = {
+    pathname: "/g/g-12345",
+    search: "?conversationId=123e4567-e89b-12d3-a456-426614174000"
+  };
+  globalThis.document = {
+    querySelector: () => null
+  };
+
+  try {
+    const extension = loadExtensionModule();
+    assert.equal(
+      extension.getConversationId(),
+      "123e4567-e89b-12d3-a456-426614174000"
+    );
+  } finally {
+    globalThis.location = previousLocation;
+    globalThis.document = previousDocument;
+  }
 });
