@@ -91,6 +91,61 @@
     return String(template || '').replace(/{latex}/g, latex);
   }
 
+  function applyIndentedMultilineTemplate(template, latex, indent) {
+    const rendered = applyMathTemplate(template, latex);
+    if (!indent) {
+      return rendered;
+    }
+
+    return rendered
+      .split('\n')
+      .map(line => `${indent}${line}`)
+      .join('\n');
+  }
+
+  function normalizeDisplayMathBlocks(markdown, displayMathTemplate) {
+    const lines = String(markdown || '').split('\n');
+    const normalizedLines = [];
+
+    for (let i = 0; i < lines.length; i += 1) {
+      const openMatch = lines[i].match(/^([ \t>]*)\\\[\s*$/);
+      if (!openMatch) {
+        normalizedLines.push(lines[i]);
+        continue;
+      }
+
+      const indent = openMatch[1] || '';
+      const latexLines = [];
+      let closingIndex = -1;
+
+      for (let j = i + 1; j < lines.length; j += 1) {
+        if (/^[ \t>]*\\\]\s*$/.test(lines[j])) {
+          closingIndex = j;
+          break;
+        }
+
+        if (indent && lines[j].startsWith(indent)) {
+          latexLines.push(lines[j].slice(indent.length));
+        } else {
+          latexLines.push(lines[j]);
+        }
+      }
+
+      if (closingIndex === -1) {
+        normalizedLines.push(lines[i]);
+        continue;
+      }
+
+      const latex = latexLines.join('\n').trim();
+      normalizedLines.push(
+        applyIndentedMultilineTemplate(displayMathTemplate, latex, indent)
+      );
+      i = closingIndex;
+    }
+
+    return normalizedLines.join('\n');
+  }
+
   function protectMarkdownCodeSpans(markdown) {
     const placeholders = [];
     let protectedMarkdown = String(markdown || '');
@@ -146,6 +201,7 @@
         /entity([\s\S]*?)/g,
         (_, entityPayload) => extractEntityLabel(entityPayload)
       )
+      .replace(/(?:genui|[^]+)[\s\S]*?/g, '')
       .replace(/\n{3,}/g, '\n\n')
       .trim();
   }
@@ -153,8 +209,10 @@
   function normalizeMarkdownMathDelimiters(markdown, inlineMathTemplate, displayMathTemplate) {
     const { placeholders, protectedMarkdown } = protectMarkdownCodeSpans(markdown);
 
-    const normalized = normalizeMarkdownEntities(protectedMarkdown)
-      .replace(/\\\[\s*([\s\S]*?)\s*\\\]/g, (_, latex) => applyMathTemplate(displayMathTemplate, latex.trim()))
+    const normalized = normalizeDisplayMathBlocks(
+      normalizeMarkdownEntities(protectedMarkdown),
+      displayMathTemplate
+    )
       .replace(/\\\(([\s\S]*?)\\\)/g, (_, latex) => applyMathTemplate(inlineMathTemplate, latex.trim()));
 
     return restoreMarkdownCodeSpans(normalized, placeholders);
@@ -747,7 +805,7 @@
 
 
     // Convert to Markdown
-    const markdown = turndownService.turndown(html);
+    const markdown = normalizeMarkdownEntities(turndownService.turndown(html));
 
     // Clean up excessive newlines
     return markdown
@@ -1190,6 +1248,7 @@
       getConversationId,
       normalizeMarkdownEntities,
       normalizeMarkdownMathDelimiters,
+      htmlToMarkdown,
       textToHtml
     };
   }

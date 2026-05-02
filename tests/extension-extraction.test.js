@@ -196,6 +196,76 @@ test("normalizeMarkdownMathDelimiters rewrites configured math delimiters withou
   );
 });
 
+test("normalizeMarkdownMathDelimiters preserves list indentation for display math blocks", () => {
+  const extension = loadExtensionModule();
+
+  const markdown = [
+    "- Define",
+    "  \\[",
+    "  \\zeta(s) = \\sum_{n=1}^\\infty \\frac{1}{n^s}",
+    "  \\]",
+    "  for \\(\\Re(s) > 1\\)"
+  ].join("\n");
+
+  const normalized = extension.normalizeMarkdownMathDelimiters(
+    markdown,
+    "${latex}$",
+    "$$\n{latex}\n$$"
+  );
+
+  assert.equal(
+    normalized,
+    [
+      "- Define",
+      "  $$",
+      "  \\zeta(s) = \\sum_{n=1}^\\infty \\frac{1}{n^s}",
+      "  $$",
+      "  for $\\Re(s) > 1$"
+    ].join("\n")
+  );
+});
+
+test("normalizeMarkdownMathDelimiters keeps separate display math blocks from bleeding together", () => {
+  const extension = loadExtensionModule();
+
+  const markdown = [
+    "The statement  ",
+    "\\[",
+    "1 + 2 + 3 + 4 + \\dots = -\\frac{1}{12}",
+    "\\]  ",
+    "is **not true in the usual sense of summation**.",
+    "",
+    "- Define  ",
+    "  \\[",
+    "  \\zeta(s) = \\sum_{n=1}^\\infty \\frac{1}{n^s}",
+    "  \\]",
+    "  for \\(\\Re(s) > 1\\)"
+  ].join("\n");
+
+  const normalized = extension.normalizeMarkdownMathDelimiters(
+    markdown,
+    "${latex}$",
+    "$$\n{latex}\n$$"
+  );
+
+  assert.equal(
+    normalized,
+    [
+      "The statement  ",
+      "$$",
+      "1 + 2 + 3 + 4 + \\dots = -\\frac{1}{12}",
+      "$$",
+      "is **not true in the usual sense of summation**.",
+      "",
+      "- Define  ",
+      "  $$",
+      "  \\zeta(s) = \\sum_{n=1}^\\infty \\frac{1}{n^s}",
+      "  $$",
+      "  for $\\Re(s) > 1$"
+    ].join("\n")
+  );
+});
+
 test("normalizeMarkdownEntities converts ChatGPT entity markers to their display text", () => {
   const extension = loadExtensionModule();
 
@@ -221,6 +291,17 @@ test("normalizeMarkdownEntities removes ChatGPT image group markers", () => {
       ].join("\n")
     ),
     "Before\n\nAfter"
+  );
+});
+
+test("normalizeMarkdownEntities strips unknown widget markers", () => {
+  const extension = loadExtensionModule();
+
+  assert.equal(
+    extension.normalizeMarkdownEntities(
+      "Before genui{\"math_block_widget_always_prefetch_v2\":{\"content\":\"F = dA + A \\\wedge A\"}} After"
+    ),
+    "Before  After"
   );
 });
 

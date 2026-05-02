@@ -45,6 +45,14 @@ The project does not aim to cover the full variability of all possible conversat
 
 This is a beta release. Expect rough edges, and please report bugs with clear reproduction steps.
 
+## Recent Fixes
+
+### 0.1.4
+
+- Updated conversation detection to match current `chatgpt.com` rendering and Firefox content-script restrictions.
+- Removed ChatGPT image carousel placeholders from exported Markdown.
+- Improved displayed LaTeX block handling inside list items so configured delimiters render cleanly and preserve indentation.
+
 ## Internals
 
 The extension uses the [Turndown](https://github.com/mixmark-io/turndown) library as converter engine and has a double-pass strategy:
