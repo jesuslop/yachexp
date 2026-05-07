@@ -414,6 +414,10 @@
       return part;
     }
 
+    if (Array.isArray(part)) {
+      return part.map(extractPartText).filter(Boolean).join('\n\n');
+    }
+
     if (!part || typeof part !== 'object') {
       return '';
     }
@@ -427,7 +431,7 @@
     }
 
     if (typeof part.summary === 'string') {
-      const detail = typeof part.content === 'string' ? part.content : '';
+      const detail = typeof part.content === 'string' ? part.content : extractPartText(part.content);
       return [part.summary, detail].filter(Boolean).join(': ');
     }
 
@@ -435,12 +439,32 @@
       return part.content;
     }
 
+    if (Array.isArray(part.content) || (part.content && typeof part.content === 'object')) {
+      return extractPartText(part.content);
+    }
+
     if (typeof part.result === 'string') {
       return part.result;
     }
 
+    if (Array.isArray(part.result) || (part.result && typeof part.result === 'object')) {
+      return extractPartText(part.result);
+    }
+
     if (typeof part.output === 'string') {
       return part.output;
+    }
+
+    if (Array.isArray(part.output) || (part.output && typeof part.output === 'object')) {
+      return extractPartText(part.output);
+    }
+
+    if (typeof part.markdown === 'string') {
+      return part.markdown;
+    }
+
+    if (typeof part.value === 'string') {
+      return part.value;
     }
 
     if (Array.isArray(part.thoughts)) {
@@ -449,6 +473,14 @@
 
     if (Array.isArray(part.parts)) {
       return part.parts.map(extractPartText).filter(Boolean).join('\n\n');
+    }
+
+    if (Array.isArray(part.messages)) {
+      return part.messages.map(extractPartText).filter(Boolean).join('\n\n');
+    }
+
+    if (Array.isArray(part.children)) {
+      return part.children.map(extractPartText).filter(Boolean).join('\n\n');
     }
 
     return '';
@@ -460,47 +492,7 @@
       return '';
     }
 
-    if (Array.isArray(content.parts)) {
-      return content.parts
-        .map(extractPartText)
-        .filter(Boolean)
-        .join('\n\n')
-        .trim();
-    }
-
-    if (typeof content.text === 'string') {
-      return content.text.trim();
-    }
-
-    if (Array.isArray(content.text)) {
-      return content.text
-        .map(extractPartText)
-        .filter(Boolean)
-        .join('\n\n')
-        .trim();
-    }
-
-    if (typeof content.result === 'string') {
-      return content.result.trim();
-    }
-
-    if (typeof content.content === 'string') {
-      return content.content.trim();
-    }
-
-    if (typeof content.output === 'string') {
-      return content.output.trim();
-    }
-
-    if (Array.isArray(content.thoughts)) {
-      return content.thoughts
-        .map(extractPartText)
-        .filter(Boolean)
-        .join('\n\n')
-        .trim();
-    }
-
-    return '';
+    return extractPartText(content).trim();
   }
 
   function getOrderedConversationMessages(payload) {
@@ -601,20 +593,23 @@
     }
 
     if (typeof pair.questionHtml === 'string') {
-      return htmlToMarkdown(
+      const markdown = htmlToMarkdown(
         pair.questionHtml.replace(/\n/g, '<br>'),
         inlineMathTemplate,
         displayMathTemplate
       );
+      return markdown || stripHtml(pair.questionHtml);
     }
 
     if (pair.questionArticle) {
-      const questionHTML = cleanArticle(pair.questionArticle).outerHTML;
-      return htmlToMarkdown(
+      const cleanClone = cleanArticle(pair.questionArticle);
+      const questionHTML = cleanClone.outerHTML;
+      const markdown = htmlToMarkdown(
         questionHTML.replace(/\n/g, '<br>'),
         inlineMathTemplate,
         displayMathTemplate
       );
+      return markdown || cleanClone.textContent.trim();
     }
 
     return '';
@@ -630,16 +625,19 @@
     }
 
     if (typeof pair.answerHtml === 'string') {
-      return htmlToMarkdown(
+      const markdown = htmlToMarkdown(
         pair.answerHtml,
         inlineMathTemplate,
         displayMathTemplate
       );
+      return markdown || stripHtml(pair.answerHtml);
     }
 
     if (pair.answerArticle) {
-      const answerHTML = cleanArticle(pair.answerArticle).outerHTML;
-      return htmlToMarkdown(answerHTML, inlineMathTemplate, displayMathTemplate);
+      const cleanClone = cleanArticle(pair.answerArticle);
+      const answerHTML = cleanClone.outerHTML;
+      const markdown = htmlToMarkdown(answerHTML, inlineMathTemplate, displayMathTemplate);
+      return markdown || cleanClone.textContent.trim();
     }
 
     return '';
@@ -894,8 +892,32 @@
       turnSectionIdCount: document.querySelectorAll('#thread section[data-turn-id][data-turn]').length,
       roleNodeCount: document.querySelectorAll('#thread [data-message-author-role]').length,
       userRoleNodeCount: document.querySelectorAll('#thread [data-message-author-role="user"]').length,
-      assistantRoleNodeCount: document.querySelectorAll('#thread [data-message-author-role="assistant"]').length
+      assistantRoleNodeCount: document.querySelectorAll('#thread [data-message-author-role="assistant"]').length,
+      agentTurnCount: document.querySelectorAll('#thread .agent-turn').length,
+      textMessageCount: document.querySelectorAll('#thread .text-message').length,
+      markdownCount: document.querySelectorAll('#thread .markdown').length,
+      userMessageTestIdCount: document.querySelectorAll('#thread [data-testid="user-message"]').length
     };
+  }
+
+  function nodeHasText(node) {
+    return !!(node?.innerText?.trim() || node?.textContent?.trim());
+  }
+
+  function firstTextNode(root, selectors) {
+    if (!root) {
+      return null;
+    }
+
+    for (const selector of selectors) {
+      const candidates = Array.from(root.querySelectorAll(selector));
+      const candidate = candidates.find(nodeHasText);
+      if (candidate) {
+        return candidate;
+      }
+    }
+
+    return nodeHasText(root) ? root : null;
   }
 
   function extractTurnContentNode(turnSection, role) {
@@ -905,23 +927,78 @@
 
     const roleNode = turnSection.querySelector(`[data-message-author-role="${role}"]`);
     const scopedRoot = roleNode || turnSection;
+    const selectors = [
+      '.markdown',
+      '.prose',
+      '[data-testid="user-message"]',
+      '[data-testid="assistant-turn"]',
+      '.whitespace-pre-wrap',
+      'p',
+      'pre',
+      'ul',
+      'ol',
+      'table'
+    ];
 
-    return scopedRoot.querySelector(
-      '.whitespace-pre-wrap, .markdown, .prose, [data-testid="user-message"], [data-testid="assistant-turn"], p, pre, ul, ol, table'
-    ) || roleNode || null;
+    return firstTextNode(scopedRoot, selectors) || roleNode || null;
+  }
+
+  function getModernTurnRole(turn) {
+    const dataTurn = turn.getAttribute('data-turn');
+    if (dataTurn === 'user' || dataTurn === 'assistant') {
+      return dataTurn;
+    }
+
+    if (turn.querySelector('[data-message-author-role="user"], [data-testid="user-message"]')) {
+      return 'user';
+    }
+
+    if (turn.querySelector('[data-message-author-role="assistant"], [data-testid="assistant-turn"], .agent-turn')) {
+      return 'assistant';
+    }
+
+    return null;
+  }
+
+  function extractModernTurnContentNode(turn, role) {
+    const roleRoot = role === 'assistant'
+      ? turn.querySelector('[data-message-author-role="assistant"], [data-testid="assistant-turn"], .agent-turn') || turn
+      : turn.querySelector('[data-message-author-role="user"], [data-testid="user-message"]') || turn;
+
+    if (role === 'assistant') {
+      return firstTextNode(roleRoot, [
+        '.markdown',
+        '.prose',
+        '.text-message .markdown',
+        '.text-message',
+        'p',
+        'pre',
+        'ul',
+        'ol',
+        'table'
+      ]);
+    }
+
+    return firstTextNode(roleRoot, [
+      '[data-testid="user-message"]',
+      '.whitespace-pre-wrap',
+      '.text-message',
+      'p',
+      'pre'
+    ]);
   }
 
   function buildQAPairsFromTurnSections() {
     const turns = Array.from(
-      document.querySelectorAll('#thread section[data-turn-id][data-turn], #thread section[data-turn]')
+      document.querySelectorAll('#thread section')
     );
     const pairs = [];
     let pendingUser = null;
 
     for (const turn of turns) {
-      const role = turn.getAttribute('data-turn');
+      const role = getModernTurnRole(turn);
       if (role === 'user') {
-        const userNode = extractTurnContentNode(turn, 'user');
+        const userNode = extractTurnContentNode(turn, 'user') || extractModernTurnContentNode(turn, 'user');
         if (!userNode) {
           continue;
         }
@@ -940,7 +1017,7 @@
       }
 
       if (role === 'assistant' && pendingUser) {
-        const assistantNode = extractTurnContentNode(turn, 'assistant');
+        const assistantNode = extractTurnContentNode(turn, 'assistant') || extractModernTurnContentNode(turn, 'assistant');
         if (!assistantNode) {
           continue;
         }
@@ -1007,13 +1084,46 @@
     return pairs;
   }
 
+  function getPairRawAnswerText(pair) {
+    if (!pair) {
+      return '';
+    }
+
+    if (typeof pair.answerMarkdown === 'string') {
+      return normalizeMarkdownEntities(pair.answerMarkdown).trim();
+    }
+
+    if (typeof pair.answerHtml === 'string') {
+      return stripHtml(pair.answerHtml);
+    }
+
+    if (pair.answerArticle) {
+      return pair.answerArticle.innerText?.trim() || pair.answerArticle.textContent?.trim() || '';
+    }
+
+    return '';
+  }
+
+  function scoreQAPairs(pairs) {
+    return pairs.reduce((score, pair) => {
+      const answerText = getPairRawAnswerText(pair);
+      if (!answerText) {
+        return score;
+      }
+
+      return score + 1000 + Math.min(answerText.length, 1000);
+    }, 0);
+  }
+
   async function buildQAPairs() {
     let cachedPayload = null;
+    const candidates = [];
+
     try {
       cachedPayload = getConversationPayloadFromGlobals();
       const cachedPairs = buildQAPairsFromConversationPayload(cachedPayload);
       if (cachedPairs.length) {
-        return cachedPairs;
+        candidates.push({ source: 'cached payload', pairs: cachedPairs });
       }
     } catch (error) {
       console.warn('yachexp: cached payload extraction failed', error);
@@ -1024,7 +1134,7 @@
       fetchedPayload = await fetchConversationPayload();
       const fetchedPairs = buildQAPairsFromConversationPayload(fetchedPayload);
       if (fetchedPairs.length) {
-        return fetchedPairs;
+        candidates.push({ source: 'fetched payload', pairs: fetchedPairs });
       }
     } catch (error) {
       console.warn('yachexp: fetched payload extraction failed', error);
@@ -1033,7 +1143,7 @@
     try {
       const turnPairs = buildQAPairsFromTurnSections();
       if (turnPairs.length) {
-        return turnPairs;
+        candidates.push({ source: 'turn sections', pairs: turnPairs });
       }
     } catch (error) {
       console.warn('yachexp: turn section extraction failed', error);
@@ -1042,10 +1152,28 @@
     try {
       const domPairs = buildQAPairsFromDOM();
       if (domPairs.length) {
-        return domPairs;
+        candidates.push({ source: 'message articles', pairs: domPairs });
       }
     } catch (error) {
       console.warn('yachexp: DOM extraction failed', error);
+    }
+
+    if (candidates.length) {
+      const best = candidates
+        .map(candidate => ({
+          ...candidate,
+          score: scoreQAPairs(candidate.pairs)
+        }))
+        .sort((a, b) => b.score - a.score)[0];
+
+      if (best.score > 0) {
+        console.info('yachexp: using conversation extraction source', {
+          source: best.source,
+          pairs: best.pairs.length,
+          score: best.score
+        });
+        return best.pairs;
+      }
     }
 
     console.warn('yachexp: no conversation pairs found', {
@@ -1068,7 +1196,7 @@
   function cleanArticle(article) {
     const clone = article.cloneNode(true);
     clone.querySelectorAll(
-      'nav, button, svg, [role="toolbar"], [aria-label]'
+      'nav, button, svg, [role="toolbar"], [aria-hidden="true"], .sr-only'
     ).forEach(el => el.remove());
     return clone;
   }

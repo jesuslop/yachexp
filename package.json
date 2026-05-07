@@ -15,5 +15,8 @@
     "turndown": "7.1.2",
     "turndown-plugin-gfm": "1.0.2",
     "yuppee": "1.0.0"
+  },
+  "dependencies": {
+    "web-ext": "^10.1.0"
   }
 }

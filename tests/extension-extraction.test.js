@@ -151,6 +151,36 @@ test("extractMessageMarkdown supports multimodal text arrays", () => {
   );
 });
 
+test("extractMessageMarkdown supports nested structured answer content", () => {
+  const extension = loadExtensionModule();
+
+  const markdown = extension.extractMessageMarkdown({
+    content: {
+      content_type: "structured_text",
+      parts: [
+        {
+          content_type: "paragraph",
+          content: [
+            { text: "Nested paragraph one." },
+            {
+              content_type: "list",
+              children: [
+                { markdown: "- Nested bullet" },
+                { output: { text: "Nested output block" } }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  });
+
+  assert.equal(
+    markdown,
+    "Nested paragraph one.\n\n- Nested bullet\n\nNested output block"
+  );
+});
+
 test("normalizeMarkdownMathDelimiters rewrites configured math delimiters without touching code", () => {
   const extension = loadExtensionModule();
 
