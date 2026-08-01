@@ -278,13 +278,53 @@
     }
   }
 
+  function getMessageContent(message) {
+    return message?.content || message?.message?.content || null;
+  }
+
+  function isConversationMessage(value) {
+    try {
+      return !!(
+        value &&
+        typeof value === 'object' &&
+        getMessageRole(value) &&
+        getMessageContent(value)
+      );
+    } catch {
+      return false;
+    }
+  }
+
+  function hasConversationMessages(value) {
+    return Array.isArray(value) && value.some(isConversationMessage);
+  }
+
+  function getPayloadMessageArrays(value) {
+    if (!value || typeof value !== 'object') {
+      return [];
+    }
+
+    return [
+      tryGetValue(() => value.linear_conversation, null),
+      tryGetValue(() => value.messages, null),
+      tryGetValue(() => value.conversation.messages, null),
+      tryGetValue(() => value.conversation.linear_conversation, null),
+      tryGetValue(() => value.current_conversation.messages, null),
+      tryGetValue(() => value.current_conversation.linear_conversation, null),
+      tryGetValue(() => value.data.messages, null),
+      tryGetValue(() => value.data.linear_conversation, null)
+    ].filter(hasConversationMessages);
+  }
+
   function isConversationPayload(value) {
     try {
       return !!(
         value &&
         typeof value === 'object' &&
-        value.mapping &&
-        typeof value.mapping === 'object'
+        (
+          (value.mapping && typeof value.mapping === 'object') ||
+          getPayloadMessageArrays(value).length
+        )
       );
     } catch {
       return false;
@@ -373,6 +413,60 @@
     return null;
   }
 
+  function getAccessTokenFromGlobals() {
+    const bootstrapToken = getClientBootstrapData()?.session?.accessToken;
+    if (bootstrapToken) {
+      return bootstrapToken;
+    }
+
+    const roots = [window];
+    const pageWindow = getPageWindow();
+    if (pageWindow && pageWindow !== window) {
+      roots.unshift(pageWindow);
+    }
+
+    for (const root of roots) {
+      const candidates = [
+        tryGetValue(() => root.__NEXT_DATA__?.props?.pageProps?.session?.accessToken),
+        tryGetValue(() => root.__INITIAL_STATE__?.session?.accessToken),
+        tryGetValue(() => root.__remixContext?.state?.loaderData?.root?.session?.accessToken),
+        tryGetValue(() => root.__REMIX_CONTEXT__?.state?.loaderData?.root?.session?.accessToken)
+      ];
+
+      const token = candidates.find(candidate => typeof candidate === 'string' && candidate.length);
+      if (token) {
+        return token;
+      }
+    }
+
+    return null;
+  }
+
+  async function fetchSessionAccessToken() {
+    try {
+      const response = await fetch('/api/auth/session', {
+        credentials: 'include',
+        cache: 'no-store',
+        headers: {
+          Accept: 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        return null;
+      }
+
+      const session = await response.json();
+      return session?.accessToken || null;
+    } catch {
+      return null;
+    }
+  }
+
+  async function getAccessToken() {
+    return getAccessTokenFromGlobals() || await fetchSessionAccessToken();
+  }
+
   async function fetchConversationPayload() {
     const conversationId = getConversationId();
     if (!conversationId) {
@@ -382,7 +476,7 @@
     const headers = {
       Accept: 'application/json'
     };
-    const accessToken = getClientBootstrapData()?.session?.accessToken;
+    const accessToken = await getAccessToken();
     if (accessToken) {
       headers.Authorization = `Bearer ${accessToken}`;
     }
@@ -406,7 +500,7 @@
   }
 
   function getMessageRole(message) {
-    return message?.author?.role || message?.role || null;
+    return message?.author?.role || message?.role || message?.message?.author?.role || message?.message?.role || null;
   }
 
   function extractPartText(part) {
@@ -487,7 +581,7 @@
   }
 
   function extractMessageMarkdown(message) {
-    const content = message?.content;
+    const content = getMessageContent(message);
     if (!content || typeof content !== 'object') {
       return '';
     }
@@ -502,7 +596,8 @@
 
     const mapping = tryGetValue(() => payload.mapping, null);
     if (!mapping || typeof mapping !== 'object') {
-      return [];
+      const messageArray = getPayloadMessageArrays(payload)[0] || [];
+      return messageArray.map(entry => entry?.message || entry).filter(Boolean);
     }
 
     const linearConversation = tryGetValue(() => payload.linear_conversation, null);
@@ -1369,9 +1464,11 @@
     module.exports = {
       buildQAPairsFromConversationPayload,
       extractMessageMarkdown,
+      fetchConversationPayload,
       getPairAnswerMarkdown,
       getPairQuestionMarkdown,
       getOrderedConversationMessages,
+      getAccessToken,
       isConversationPayload,
       getConversationId,
       normalizeMarkdownEntities,

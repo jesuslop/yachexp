@@ -105,6 +105,66 @@ test("buildQAPairsFromConversationPayload respects linear_conversation ordering"
   assert.equal(pairs[0].answerMarkdown, "Answer block one\n\nAnswer block two");
 });
 
+test("buildQAPairsFromConversationPayload supports flat message lists", () => {
+  const extension = loadExtensionModule();
+  const payload = {
+    conversation: {
+      messages: [
+        {
+          author: { role: "user" },
+          content: { parts: ["First question"] }
+        },
+        {
+          author: { role: "assistant" },
+          content: { parts: ["First answer"] }
+        },
+        {
+          role: "user",
+          content: { parts: ["Second question"] }
+        },
+        {
+          role: "assistant",
+          content: { parts: ["Second answer"] }
+        }
+      ]
+    }
+  };
+
+  const pairs = extension.buildQAPairsFromConversationPayload(payload);
+
+  assert.equal(pairs.length, 2);
+  assert.equal(pairs[0].questionMarkdown, "First question");
+  assert.equal(pairs[0].answerMarkdown, "First answer");
+  assert.equal(pairs[1].questionMarkdown, "Second question");
+  assert.equal(pairs[1].answerMarkdown, "Second answer");
+});
+
+test("buildQAPairsFromConversationPayload supports wrapped linear message entries", () => {
+  const extension = loadExtensionModule();
+  const payload = {
+    linear_conversation: [
+      {
+        message: {
+          author: { role: "user" },
+          content: { parts: ["Wrapped question"] }
+        }
+      },
+      {
+        message: {
+          author: { role: "assistant" },
+          content: { parts: ["Wrapped answer"] }
+        }
+      }
+    ]
+  };
+
+  const pairs = extension.buildQAPairsFromConversationPayload(payload);
+
+  assert.equal(pairs.length, 1);
+  assert.equal(pairs[0].questionMarkdown, "Wrapped question");
+  assert.equal(pairs[0].answerMarkdown, "Wrapped answer");
+});
+
 test("extractMessageMarkdown supports string and object parts", () => {
   const extension = loadExtensionModule();
 
