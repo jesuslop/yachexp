@@ -1533,83 +1533,196 @@
    ********************************************************************/
 
   function createModal(pairs) {
-    const overlay = document.createElement('div');
-    overlay.style.cssText = `
+    const host = document.createElement('yachexp-export-ui');
+    host.style.cssText = `
       position: fixed;
       inset: 0;
-      background: rgba(0,0,0,0.65);
-      z-index: 10000;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      z-index: 2147483647;
+      display: block;
+      isolation: isolate;
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      font-size: 14px;
+      line-height: 1.4;
+      color: #111;
+      color-scheme: light;
     `;
+
+    const shadowRoot = host.attachShadow({ mode: 'open' });
+    const styles = document.createElement('style');
+    styles.textContent = `
+      :host {
+        font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+        font-size: 14px;
+        line-height: 1.4;
+        color: #111;
+        color-scheme: light;
+      }
+
+      *, *::before, *::after {
+        box-sizing: border-box;
+      }
+
+      .yachexp-overlay {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+        background: rgba(0, 0, 0, 0.65);
+      }
+
+      .yachexp-modal {
+        display: flex;
+        flex-direction: column;
+        width: min(640px, calc(100vw - 32px));
+        height: min(700px, calc(100vh - 32px));
+        min-height: 0;
+        padding: 18px;
+        overflow: hidden;
+        border-radius: 10px;
+        background: #fff;
+        color: #111;
+      }
+
+      .yachexp-title {
+        flex: 0 0 auto;
+        margin: 0 0 14px;
+        font-size: 1.25rem;
+        font-weight: 600;
+      }
+
+      .yachexp-controls {
+        flex: 0 0 auto;
+        margin-bottom: 10px;
+      }
+
+      .yachexp-button {
+        appearance: none;
+        padding: 7px 12px;
+        border: 1px solid #bbb;
+        border-radius: 5px;
+        background: #f0f0f0;
+        color: #111;
+        font: inherit;
+        cursor: pointer;
+      }
+
+      .yachexp-button:focus-visible,
+      .yachexp-checkbox:focus-visible {
+        outline: 2px solid #087f5b;
+        outline-offset: 2px;
+      }
+
+      .yachexp-select-all {
+        margin-right: 10px;
+      }
+
+      .yachexp-list {
+        flex: 1 1 auto;
+        min-height: 0;
+        margin-bottom: 14px;
+        padding: 10px;
+        overflow-x: hidden;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        border: 1px solid #ccc;
+      }
+
+      .yachexp-row {
+        display: flex;
+        width: 100%;
+        min-width: 0;
+        gap: 10px;
+        align-items: flex-start;
+        margin-bottom: 8px;
+        color: #111;
+        font: inherit;
+        cursor: pointer;
+      }
+
+      .yachexp-checkbox {
+        flex: 0 0 16px;
+        width: 16px;
+        height: 16px;
+        margin: 4px 0 0;
+        appearance: auto;
+        accent-color: #10a37f;
+        opacity: 1;
+      }
+
+      .yachexp-text {
+        display: block;
+        min-width: 0;
+        color: #111;
+        font: inherit;
+        white-space: normal;
+        overflow-wrap: anywhere;
+      }
+
+      .yachexp-footer {
+        display: flex;
+        flex: 0 0 auto;
+        justify-content: flex-end;
+        gap: 14px;
+        padding-top: 12px;
+        border-top: 1px solid #ddd;
+      }
+
+      .yachexp-export {
+        border-color: #0d8d6f;
+        background: #10a37f;
+        color: #fff;
+      }
+    `;
+    shadowRoot.appendChild(styles);
+
+    const overlay = document.createElement('div');
+    overlay.className = 'yachexp-overlay';
 
     const modal = document.createElement('div');
-    modal.style.cssText = `
-      background: #fff;
-      width: 640px;
-      max-height: 85vh;
-      border-radius: 10px;
-      display: flex;
-      flex-direction: column;
-      padding: 18px;
-      box-sizing: border-box;
-    `;
+    modal.className = 'yachexp-modal';
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
+    modal.setAttribute('aria-labelledby', 'yachexp-dialog-title');
 
     const title = document.createElement('h2');
+    title.id = 'yachexp-dialog-title';
+    title.className = 'yachexp-title';
     title.textContent = 'Export conversation to Markdown';
-    title.style.margin = '0 0 14px 0';
 
     const controls = document.createElement('div');
-    controls.style.marginBottom = '10px';
-
-    const btnStyle = `
-      cursor: pointer;
-      padding: 6px 12px;
-      background: #f0f0f0;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      font-size: 13px;
-    `;
+    controls.className = 'yachexp-controls';
 
     const selectAllBtn = document.createElement('button');
+    selectAllBtn.type = 'button';
+    selectAllBtn.className = 'yachexp-button yachexp-select-all';
     selectAllBtn.textContent = 'Select all';
-    selectAllBtn.style.cssText = btnStyle + 'margin-right: 10px;';
 
     const deselectAllBtn = document.createElement('button');
+    deselectAllBtn.type = 'button';
+    deselectAllBtn.className = 'yachexp-button';
     deselectAllBtn.textContent = 'Deselect all';
-    deselectAllBtn.style.cssText = btnStyle;
 
     controls.append(selectAllBtn, deselectAllBtn);
 
     const list = document.createElement('div');
-    list.style.cssText = `
-      flex: 1;
-      overflow-y: auto;
-      border: 1px solid #ccc;
-      padding: 10px;
-      margin-bottom: 14px;
-    `;
+    list.className = 'yachexp-list';
 
     const checkboxes = [];
 
     pairs.forEach((pair, idx) => {
       const row = document.createElement('label');
-      row.style.cssText = `
-        display: flex;
-        gap: 10px;
-        align-items: flex-start;
-        margin-bottom: 8px;
-        cursor: pointer;
-      `;
+      row.className = 'yachexp-row';
 
       const cb = document.createElement('input');
       cb.type = 'checkbox';
+      cb.className = 'yachexp-checkbox';
       cb.checked = true;
       cb.dataset.index = idx;
-      cb.style.marginTop = '4px';
 
       const text = document.createElement('span');
+      text.className = 'yachexp-text';
       text.textContent = truncate(getPairPreviewText(pair));
 
       row.append(cb, text);
@@ -1621,33 +1734,25 @@
     deselectAllBtn.onclick = () => checkboxes.forEach(cb => cb.checked = false);
 
     const footer = document.createElement('div');
-    footer.style.cssText = `
-      display: flex;
-      justify-content: flex-end;
-      gap: 14px;
-      padding-top: 12px;
-      border-top: 1px solid #ddd;
-    `;
+    footer.className = 'yachexp-footer';
 
     const cancelBtn = document.createElement('button');
+    cancelBtn.type = 'button';
+    cancelBtn.className = 'yachexp-button';
     cancelBtn.textContent = 'Cancel';
-    cancelBtn.style.padding = '10px 18px';
 
     const exportBtn = document.createElement('button');
+    exportBtn.type = 'button';
+    exportBtn.className = 'yachexp-button yachexp-export';
     exportBtn.textContent = 'Export';
-    exportBtn.style.cssText = `
-      padding: 10px 22px;
-      background: #10a37f;
-      color: #fff;
-      border-radius: 6px;
-    `;
 
     footer.append(cancelBtn, exportBtn);
     modal.append(title, controls, list, footer);
     overlay.appendChild(modal);
-    document.body.appendChild(overlay);
+    shadowRoot.appendChild(overlay);
+    document.body.appendChild(host);
 
-    cancelBtn.onclick = () => overlay.remove();
+    cancelBtn.onclick = () => host.remove();
 
     exportBtn.onclick = () => {
       const selected = checkboxes
@@ -1655,7 +1760,7 @@
         .map(cb => pairs[cb.dataset.index]);
 
       exportMarkdown(selected);
-      overlay.remove();
+      host.remove();
     };
   }
 

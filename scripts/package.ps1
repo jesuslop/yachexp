@@ -189,8 +189,47 @@ if (Test-Path $outputPath) {
   Remove-Item -Force -Path $outputPath
 }
 
-Add-Type -AssemblyName System.IO.Compression.FileSystem
-[System.IO.Compression.ZipFile]::CreateFromDirectory($staging, $outputPath)
+Add-Type -AssemblyName System.IO.Compression
+
+$archiveStream = [System.IO.File]::Open(
+  $outputPath,
+  [System.IO.FileMode]::Create,
+  [System.IO.FileAccess]::ReadWrite,
+  [System.IO.FileShare]::None
+)
+
+try {
+  $archive = [System.IO.Compression.ZipArchive]::new(
+    $archiveStream,
+    [System.IO.Compression.ZipArchiveMode]::Create
+  )
+
+  try {
+    foreach ($file in Get-ChildItem -Path $staging -File -Recurse) {
+      $entryName = $file.FullName.Substring($staging.Length + 1).Replace('\', '/')
+      $entry = $archive.CreateEntry(
+        $entryName,
+        [System.IO.Compression.CompressionLevel]::Optimal
+      )
+      $sourceStream = [System.IO.File]::OpenRead($file.FullName)
+
+      try {
+        $entryStream = $entry.Open()
+        try {
+          $sourceStream.CopyTo($entryStream)
+        } finally {
+          $entryStream.Dispose()
+        }
+      } finally {
+        $sourceStream.Dispose()
+      }
+    }
+  } finally {
+    $archive.Dispose()
+  }
+} finally {
+  $archiveStream.Dispose()
+}
 
 Write-Host ("Created local test XPI: {0}" -f $outputPath)
 Write-Host ("Included {0} files." -f $includedFiles.Count)
