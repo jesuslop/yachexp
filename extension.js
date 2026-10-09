@@ -176,11 +176,89 @@
     );
   }
 
+  function cleanFastPrefix(text) {
+    if (typeof text !== 'string') {
+      return '';
+    }
+    return text
+      .replace(/^fast\|/i, '')
+      .replace(/fast\|[^]*/g, '')
+      .trim();
+  }
+
+  function cleanAuxiliaryStatusText(markdown) {
+    if (typeof markdown !== 'string') {
+      return '';
+    }
+
+    const lines = markdown.split('\n');
+    const filteredLines = lines.filter(line => {
+      const trimmed = line.trim();
+      if (!trimmed) {
+        return true;
+      }
+
+      if (/^<(?:\/)?(?:summary|details)>/i.test(trimmed)) {
+        return false;
+      }
+
+      const cleanLine = trimmed
+        .replace(/^[-*+]\s+/, '')
+        .replace(/^<(?:\/)?(?:summary|details)>\s*/i, '')
+        .replace(/<\/(?:summary|details)>\s*$/i, '')
+        .trim();
+
+      if (!cleanLine) {
+        return false;
+      }
+
+      if (/^searched\s+(\d+|the|several|a\s+few)\s+(website|site|web|page)s?$/i.test(cleanLine)) {
+        return false;
+      }
+
+      if (/^searching(\s+the\s+web|\.\.\.)?$/i.test(cleanLine)) {
+        return false;
+      }
+
+      if (/^(worked|thought|reasoned)\s+for\s+(a\s+couple\s+of|a\s+few|a|\d+|\d+\.\d+)\s+(second|minute)s?$/i.test(cleanLine)) {
+        return false;
+      }
+
+      if (/^thinking(\s+process|\.\.\.)?$/i.test(cleanLine)) {
+        return false;
+      }
+
+      if (/^summary$/i.test(cleanLine)) {
+        return false;
+      }
+
+      return true;
+    });
+
+    return filteredLines
+      .join('\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+  }
+
   function extractEntityLabel(entityPayload) {
     try {
       const parsed = JSON.parse(entityPayload);
-      if (Array.isArray(parsed) && typeof parsed[1] === 'string' && parsed[1].trim()) {
-        return parsed[1].trim();
+      if (Array.isArray(parsed)) {
+        if (typeof parsed[1] === 'string' && parsed[1].trim() && !/^fast\|/i.test(parsed[1].trim())) {
+          return parsed[1].trim();
+        }
+        for (const item of parsed) {
+          if (typeof item === 'string' && item.trim() && !/^fast\|/i.test(item.trim())) {
+            return item.trim();
+          }
+        }
+        if (typeof parsed[1] === 'string' && parsed[1].trim()) {
+          return cleanFastPrefix(parsed[1].trim());
+        }
+        if (typeof parsed[0] === 'string' && parsed[0].trim()) {
+          return cleanFastPrefix(parsed[0].trim());
+        }
       }
     } catch {
       // Fall through to raw payload cleanup below.
@@ -191,7 +269,12 @@
       .map(part => part.replace(/^[\s"'[\]]+|[\s"'[\]]+$/g, ''))
       .filter(Boolean);
 
-    return rawParts[1] || '';
+    const nonFast = rawParts.find(p => !/^fast\|/i.test(p));
+    if (nonFast) {
+      return nonFast;
+    }
+
+    return rawParts[1] ? cleanFastPrefix(rawParts[1]) : (rawParts[0] ? cleanFastPrefix(rawParts[0]) : '');
   }
 
   function normalizeMarkdownEntities(markdown) {
@@ -201,7 +284,7 @@
         /entity([\s\S]*?)/g,
         (_, entityPayload) => extractEntityLabel(entityPayload)
       )
-      .replace(/(?:genui|[^]+)[\s\S]*?/g, '')
+      .replace(/(?:genui|fast|[^]+)[\s\S]*?/g, '')
       .replace(/\n{3,}/g, '\n\n')
       .trim();
   }
@@ -505,7 +588,7 @@
 
   function extractPartText(part) {
     if (typeof part === 'string') {
-      return part;
+      return cleanFastPrefix(part);
     }
 
     if (Array.isArray(part)) {
@@ -516,68 +599,84 @@
       return '';
     }
 
-    if (typeof part.text === 'string') {
-      return part.text;
+    const collected = [];
+
+    if (typeof part.text === 'string' && part.text.trim()) {
+      const txt = cleanFastPrefix(part.text);
+      if (txt) collected.push(txt);
+    } else if (Array.isArray(part.text)) {
+      const extracted = part.text.map(extractPartText).filter(Boolean).join('\n\n');
+      if (extracted) collected.push(extracted);
     }
 
-    if (Array.isArray(part.text)) {
-      return part.text.map(extractPartText).filter(Boolean).join('\n\n');
+    if (typeof part.summary === 'string' && part.summary.trim()) {
+      const summaryText = cleanFastPrefix(part.summary);
+      const detail = typeof part.content === 'string'
+        ? cleanFastPrefix(part.content)
+        : extractPartText(part.content);
+
+      if (summaryText && detail) {
+        collected.push(`${summaryText}: ${detail}`);
+      } else if (summaryText) {
+        collected.push(summaryText);
+      } else if (detail) {
+        collected.push(detail);
+      }
+    } else if (typeof part.content === 'string' && part.content.trim()) {
+      const txt = cleanFastPrefix(part.content);
+      if (txt) collected.push(txt);
+    } else if (Array.isArray(part.content) || (part.content && typeof part.content === 'object')) {
+      const extracted = extractPartText(part.content);
+      if (extracted) collected.push(extracted);
     }
 
-    if (typeof part.summary === 'string') {
-      const detail = typeof part.content === 'string' ? part.content : extractPartText(part.content);
-      return [part.summary, detail].filter(Boolean).join(': ');
+    if (typeof part.result === 'string' && part.result.trim()) {
+      const txt = cleanFastPrefix(part.result);
+      if (txt) collected.push(txt);
+    } else if (Array.isArray(part.result) || (part.result && typeof part.result === 'object')) {
+      const extracted = extractPartText(part.result);
+      if (extracted) collected.push(extracted);
     }
 
-    if (typeof part.content === 'string') {
-      return part.content;
+    if (typeof part.output === 'string' && part.output.trim()) {
+      const txt = cleanFastPrefix(part.output);
+      if (txt) collected.push(txt);
+    } else if (Array.isArray(part.output) || (part.output && typeof part.output === 'object')) {
+      const extracted = extractPartText(part.output);
+      if (extracted) collected.push(extracted);
     }
 
-    if (Array.isArray(part.content) || (part.content && typeof part.content === 'object')) {
-      return extractPartText(part.content);
+    if (typeof part.markdown === 'string' && part.markdown.trim()) {
+      const txt = cleanFastPrefix(part.markdown);
+      if (txt) collected.push(txt);
     }
 
-    if (typeof part.result === 'string') {
-      return part.result;
-    }
-
-    if (Array.isArray(part.result) || (part.result && typeof part.result === 'object')) {
-      return extractPartText(part.result);
-    }
-
-    if (typeof part.output === 'string') {
-      return part.output;
-    }
-
-    if (Array.isArray(part.output) || (part.output && typeof part.output === 'object')) {
-      return extractPartText(part.output);
-    }
-
-    if (typeof part.markdown === 'string') {
-      return part.markdown;
-    }
-
-    if (typeof part.value === 'string') {
-      return part.value;
+    if (typeof part.value === 'string' && part.value.trim()) {
+      const txt = cleanFastPrefix(part.value);
+      if (txt) collected.push(txt);
     }
 
     if (Array.isArray(part.thoughts)) {
-      return part.thoughts.map(extractPartText).filter(Boolean).join('\n\n');
+      const extracted = part.thoughts.map(extractPartText).filter(Boolean).join('\n\n');
+      if (extracted) collected.push(extracted);
     }
 
     if (Array.isArray(part.parts)) {
-      return part.parts.map(extractPartText).filter(Boolean).join('\n\n');
+      const extracted = part.parts.map(extractPartText).filter(Boolean).join('\n\n');
+      if (extracted) collected.push(extracted);
     }
 
     if (Array.isArray(part.messages)) {
-      return part.messages.map(extractPartText).filter(Boolean).join('\n\n');
+      const extracted = part.messages.map(extractPartText).filter(Boolean).join('\n\n');
+      if (extracted) collected.push(extracted);
     }
 
     if (Array.isArray(part.children)) {
-      return part.children.map(extractPartText).filter(Boolean).join('\n\n');
+      const extracted = part.children.map(extractPartText).filter(Boolean).join('\n\n');
+      if (extracted) collected.push(extracted);
     }
 
-    return '';
+    return collected.filter(Boolean).join('\n\n');
   }
 
   function extractMessageMarkdown(message) {
@@ -646,10 +745,64 @@
       .filter(Boolean);
   }
 
+  function isSummaryOrThoughtMessage(message, markdown) {
+    if (!message) return false;
+
+    const contentType = tryGetValue(() => message?.content?.content_type, null);
+    if (contentType === 'thoughts' || contentType === 'user_editable_context' || contentType === 'system_error') {
+      return true;
+    }
+
+    const channel = tryGetValue(() => message?.metadata?.channel, null);
+    if (channel === 'thought' || channel === 'comment') {
+      return true;
+    }
+
+    const messageType = tryGetValue(() => message?.metadata?.message_type, null);
+    if (messageType === 'summary' || messageType === 'thought' || messageType === 'reasoning') {
+      return true;
+    }
+
+    const rawContentStr = JSON.stringify(getMessageContent(message) || '');
+    if (/fast\|/i.test(rawContentStr)) {
+      return true;
+    }
+
+    const rawMarkdown = markdown || extractMessageMarkdown(message);
+    if (/^fast\|/i.test(rawMarkdown.trim())) {
+      return true;
+    }
+
+    return false;
+  }
+
   function buildQAPairsFromConversationPayload(payload) {
     const messages = getOrderedConversationMessages(payload);
     const pairs = [];
     let pendingUser = null;
+    let pendingAssistant = [];
+
+    const flushPair = () => {
+      if (pendingUser && pendingAssistant.length) {
+        const mainAnswers = pendingAssistant.filter(entry => !isSummaryOrThoughtMessage(entry.message, entry.markdown));
+        const entriesToUse = mainAnswers.length ? mainAnswers : pendingAssistant;
+        const combinedAnswer = entriesToUse
+          .map(entry => entry.markdown)
+          .filter(Boolean)
+          .join('\n\n')
+          .trim();
+
+        if (combinedAnswer) {
+          pairs.push({
+            questionMarkdown: pendingUser,
+            answerMarkdown: combinedAnswer,
+            previewText: pendingUser
+          });
+        }
+        pendingUser = null;
+        pendingAssistant = [];
+      }
+    };
 
     for (const message of messages) {
       const role = tryGetValue(() => getMessageRole(message), null);
@@ -661,19 +814,18 @@
       }
 
       if (role === 'user') {
+        flushPair();
         pendingUser = markdown;
+        pendingAssistant = [];
         continue;
       }
 
       if (role === 'assistant' && pendingUser) {
-        pairs.push({
-          questionMarkdown: pendingUser,
-          answerMarkdown: markdown,
-          previewText: pendingUser
-        });
-        pendingUser = null;
+        pendingAssistant.push({ message, markdown });
       }
     }
+
+    flushPair();
 
     return pairs;
   }
@@ -711,31 +863,28 @@
   }
 
   function getPairAnswerMarkdown(pair, inlineMathTemplate, displayMathTemplate) {
+    let rawAnswer = '';
     if (typeof pair.answerMarkdown === 'string') {
-      return normalizeMarkdownMathDelimiters(
+      rawAnswer = normalizeMarkdownMathDelimiters(
         pair.answerMarkdown.trim(),
         inlineMathTemplate,
         displayMathTemplate
       );
-    }
-
-    if (typeof pair.answerHtml === 'string') {
+    } else if (typeof pair.answerHtml === 'string') {
       const markdown = htmlToMarkdown(
         pair.answerHtml,
         inlineMathTemplate,
         displayMathTemplate
       );
-      return markdown || stripHtml(pair.answerHtml);
-    }
-
-    if (pair.answerArticle) {
+      rawAnswer = markdown || stripHtml(pair.answerHtml);
+    } else if (pair.answerArticle) {
       const cleanClone = cleanArticle(pair.answerArticle);
       const answerHTML = cleanClone.outerHTML;
       const markdown = htmlToMarkdown(answerHTML, inlineMathTemplate, displayMathTemplate);
-      return markdown || cleanClone.textContent.trim();
+      rawAnswer = markdown || cleanClone.textContent.trim();
     }
 
-    return '';
+    return cleanAuxiliaryStatusText(rawAnswer);
   }
 
   function getPairPreviewText(pair) {
@@ -783,6 +932,38 @@
     doc.querySelectorAll('button[aria-label^="Open image details for "]').forEach(el => {
       const card = el.closest('div[style*="aspect-ratio"]') || el;
       card.remove();
+    });
+
+    // 2c. Remove details/summary disclosure widgets or search/thought status indicators
+    doc.querySelectorAll('details, summary').forEach(el => {
+      const text = el.textContent.trim();
+      if (
+        !text ||
+        /^searched\s+/i.test(text) ||
+        /^(worked|thought|reasoned)\s+for\s+/i.test(text) ||
+        /^thinking/i.test(text) ||
+        /^summary$/i.test(text)
+      ) {
+        el.remove();
+      } else {
+        const parent = el.parentNode;
+        while (el.firstChild) {
+          parent.insertBefore(el.firstChild, el);
+        }
+        el.remove();
+      }
+    });
+
+    doc.querySelectorAll('button, span.select-none, [data-testid="thought-summary"], [data-testid="search-summary"]').forEach(el => {
+      const text = el.textContent.trim();
+      if (
+        /^searched\s+(\d+|the|several|a\s+few)\s+(website|site|web|page)s?$/i.test(text) ||
+        /^(worked|thought|reasoned)\s+for\s+(a\s+couple\s+of|a\s+few|a|\d+|\d+\.\d+)\s+(second|minute)s?$/i.test(text) ||
+        /^searching(\s+the\s+web|\.\.\.)?$/i.test(text) ||
+        /^thinking(\s+process|\.\.\.)?$/i.test(text)
+      ) {
+        el.remove();
+      }
     });
 
     // 3. Replace MathML with LaTeX notation
@@ -898,7 +1079,9 @@
 
 
     // Convert to Markdown
-    const markdown = normalizeMarkdownEntities(turndownService.turndown(html));
+    const markdown = cleanAuxiliaryStatusText(
+      normalizeMarkdownEntities(turndownService.turndown(html))
+    );
 
     // Clean up excessive newlines
     return markdown
@@ -1015,13 +1198,15 @@
     return nodeHasText(root) ? root : null;
   }
 
-  function extractTurnContentNode(turnSection, role) {
+  function extractAllTurnContentNodes(turnSection, role) {
     if (!turnSection || !role) {
-      return null;
+      return [];
     }
 
-    const roleNode = turnSection.querySelector(`[data-message-author-role="${role}"]`);
-    const scopedRoot = roleNode || turnSection;
+    const roleNode = role === 'assistant'
+      ? turnSection.querySelector('[data-message-author-role="assistant"], [data-testid="assistant-turn"], .agent-turn') || turnSection
+      : turnSection.querySelector('[data-message-author-role="user"], [data-testid="user-message"]') || turnSection;
+
     const selectors = [
       '.markdown',
       '.prose',
@@ -1035,7 +1220,39 @@
       'table'
     ];
 
-    return firstTextNode(scopedRoot, selectors) || roleNode || null;
+    const nodes = [];
+    const seen = new Set();
+
+    for (const selector of selectors) {
+      const candidates = Array.from(roleNode.querySelectorAll(selector));
+      for (const candidate of candidates) {
+        if (nodeHasText(candidate) && !seen.has(candidate)) {
+          let isDescendantOfSeen = false;
+          for (const s of seen) {
+            if (s.contains(candidate)) {
+              isDescendantOfSeen = true;
+              break;
+            }
+          }
+          if (!isDescendantOfSeen) {
+            seen.add(candidate);
+            nodes.push(candidate);
+          }
+        }
+      }
+      if (nodes.length && (selector === '.markdown' || selector === '.prose')) {
+        break;
+      }
+    }
+
+    return nodes;
+  }
+
+  function extractTurnContentNode(turnSection, role) {
+    const nodes = extractAllTurnContentNodes(turnSection, role);
+    return nodes[0] || (role === 'assistant'
+      ? turnSection.querySelector('[data-message-author-role="assistant"]')
+      : turnSection.querySelector('[data-message-author-role="user"]')) || null;
   }
 
   function getModernTurnRole(turn) {
@@ -1056,31 +1273,8 @@
   }
 
   function extractModernTurnContentNode(turn, role) {
-    const roleRoot = role === 'assistant'
-      ? turn.querySelector('[data-message-author-role="assistant"], [data-testid="assistant-turn"], .agent-turn') || turn
-      : turn.querySelector('[data-message-author-role="user"], [data-testid="user-message"]') || turn;
-
-    if (role === 'assistant') {
-      return firstTextNode(roleRoot, [
-        '.markdown',
-        '.prose',
-        '.text-message .markdown',
-        '.text-message',
-        'p',
-        'pre',
-        'ul',
-        'ol',
-        'table'
-      ]);
-    }
-
-    return firstTextNode(roleRoot, [
-      '[data-testid="user-message"]',
-      '.whitespace-pre-wrap',
-      '.text-message',
-      'p',
-      'pre'
-    ]);
+    const nodes = extractAllTurnContentNodes(turn, role);
+    return nodes[0] || turn;
   }
 
   function buildQAPairsFromTurnSections() {
@@ -1089,6 +1283,22 @@
     );
     const pairs = [];
     let pendingUser = null;
+    let pendingAssistantHtml = [];
+
+    const flushPair = () => {
+      if (pendingUser && pendingAssistantHtml.length) {
+        const combinedAnswerHtml = pendingAssistantHtml.join('\n\n').trim();
+        if (combinedAnswerHtml) {
+          pairs.push({
+            questionHtml: pendingUser.html,
+            answerHtml: combinedAnswerHtml,
+            previewText: pendingUser.previewText
+          });
+        }
+        pendingUser = null;
+        pendingAssistantHtml = [];
+      }
+    };
 
     for (const turn of turns) {
       const role = getModernTurnRole(turn);
@@ -1104,32 +1314,31 @@
           continue;
         }
 
+        flushPair();
         pendingUser = {
           html: questionHtml,
           previewText
         };
+        pendingAssistantHtml = [];
         continue;
       }
 
       if (role === 'assistant' && pendingUser) {
-        const assistantNode = extractTurnContentNode(turn, 'assistant') || extractModernTurnContentNode(turn, 'assistant');
-        if (!assistantNode) {
-          continue;
-        }
+        const assistantNodes = extractAllTurnContentNodes(turn, 'assistant');
+        const nodesToUse = assistantNodes.length
+          ? assistantNodes
+          : [extractTurnContentNode(turn, 'assistant') || extractModernTurnContentNode(turn, 'assistant')].filter(Boolean);
 
-        const answerHtml = assistantNode.outerHTML || assistantNode.innerHTML || '';
-        if (!answerHtml.trim()) {
-          continue;
+        for (const assistantNode of nodesToUse) {
+          const answerHtml = assistantNode.outerHTML || assistantNode.innerHTML || '';
+          if (answerHtml.trim()) {
+            pendingAssistantHtml.push(answerHtml);
+          }
         }
-
-        pairs.push({
-          questionHtml: pendingUser.html,
-          answerHtml,
-          previewText: pendingUser.previewText
-        });
-        pendingUser = null;
       }
     }
+
+    flushPair();
 
     return pairs;
   }
@@ -1163,18 +1372,41 @@
     const messages = getMessageArticles();
     const pairs = [];
     let pendingUser = null;
+    let pendingAssistantArticles = [];
+
+    const flushPair = () => {
+      if (pendingUser && pendingAssistantArticles.length) {
+        if (pendingAssistantArticles.length === 1) {
+          pairs.push({
+            questionArticle: pendingUser,
+            answerArticle: pendingAssistantArticles[0]
+          });
+        } else {
+          const wrapper = document.createElement('div');
+          for (const article of pendingAssistantArticles) {
+            wrapper.appendChild(article.cloneNode(true));
+          }
+          pairs.push({
+            questionArticle: pendingUser,
+            answerArticle: wrapper
+          });
+        }
+        pendingUser = null;
+        pendingAssistantArticles = [];
+      }
+    };
 
     for (const msg of messages) {
       if (msg.role === 'user') {
+        flushPair();
         pendingUser = msg.article;
+        pendingAssistantArticles = [];
       } else if (msg.role === 'assistant' && pendingUser) {
-        pairs.push({
-          questionArticle: pendingUser,
-          answerArticle: msg.article
-        });
-        pendingUser = null;
+        pendingAssistantArticles.push(msg.article);
       }
     }
+
+    flushPair();
 
     return pairs;
   }
@@ -1473,9 +1705,12 @@
       getConversationId,
       normalizeMarkdownEntities,
       normalizeMarkdownMathDelimiters,
+      cleanFastPrefix,
+      cleanAuxiliaryStatusText,
       htmlToMarkdown,
       textToHtml
     };
   }
 
 })();
+

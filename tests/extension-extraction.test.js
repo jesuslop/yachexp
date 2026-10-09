@@ -454,3 +454,104 @@ test("getConversationId reads conversation IDs from query parameters", () => {
     globalThis.document = previousDocument;
   }
 });
+
+test("buildQAPairsFromConversationPayload combines multi-message assistant turns and cleans fast| prefix", () => {
+  const extension = loadExtensionModule();
+  const payload = {
+    mapping: {
+      "user-1": {
+        id: "user-1",
+        parent: "root",
+        message: {
+          author: { role: "user" },
+          content: { parts: ["What is quantum computing?"] }
+        }
+      },
+      "assistant-fast-1": {
+        id: "assistant-fast-1",
+        parent: "user-1",
+        message: {
+          author: { role: "assistant" },
+          content: { parts: ["fast|Short summary of response"] }
+        }
+      },
+      "assistant-final-1": {
+        id: "assistant-final-1",
+        parent: "assistant-fast-1",
+        message: {
+          author: { role: "assistant" },
+          content: { parts: ["Quantum computing harnesses quantum mechanics to solve complex problems."] }
+        }
+      }
+    },
+    linear_conversation: [
+      { id: "user-1" },
+      { id: "assistant-fast-1" },
+      { id: "assistant-final-1" }
+    ]
+  };
+
+  const pairs = extension.buildQAPairsFromConversationPayload(payload);
+
+  assert.equal(pairs.length, 1);
+  assert.equal(pairs[0].questionMarkdown, "What is quantum computing?");
+  assert.equal(
+    pairs[0].answerMarkdown,
+    "Quantum computing harnesses quantum mechanics to solve complex problems."
+  );
+});
+
+test("cleanFastPrefix and normalizeMarkdownEntities strip raw fast| tags", () => {
+  const extension = loadExtensionModule();
+
+  assert.equal(
+    extension.cleanFastPrefix("fast|Detailed answer summary"),
+    "Detailed answer summary"
+  );
+
+  assert.equal(
+    extension.normalizeMarkdownEntities(
+      'Answer with entity["fast|domain.com","Display Label"] entity.'
+    ),
+    "Answer with Display Label entity."
+  );
+});
+
+test("cleanAuxiliaryStatusText strips summary tags, web search counters, and thought indicators", () => {
+  const extension = loadExtensionModule();
+
+  const rawAnswer = [
+    "- <summary>",
+    "- Searched 8 websites",
+    "- Worked for a couple of seconds",
+    "",
+    "This is the actual answer body.",
+    "",
+    "It contains valuable content."
+  ].join("\n");
+
+  const cleaned = extension.cleanAuxiliaryStatusText(rawAnswer);
+
+  assert.equal(
+    cleaned,
+    "This is the actual answer body.\n\nIt contains valuable content."
+  );
+});
+
+test("cleanAuxiliaryStatusText preserves legitimate prose containing words like thinking or searching", () => {
+  const extension = loadExtensionModule();
+
+  const legitimateAnswer = [
+    "Critical thinking is an essential skill in software architecture.",
+    "When searching for files in a directory, ripgrep is very fast.",
+    "The algorithm worked for 10 seconds before finding the optimal path.",
+    "We are searching for solutions to complex problems."
+  ].join("\n\n");
+
+  const cleaned = extension.cleanAuxiliaryStatusText(legitimateAnswer);
+
+  assert.equal(cleaned, legitimateAnswer);
+});
+
+
+
